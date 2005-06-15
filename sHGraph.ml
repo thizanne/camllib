@@ -1,0 +1,1442 @@
+(* \chapter{SHGraph: kind of hypergraphs} *)
+
+(* We implement here oriented hypergraphs, the edges of which has a
+   single origin vertex and are called nails. The implementation is
+   done by side-effect. *)
+
+open Format
+
+let array_forall f tab =
+  let res = ref true in
+  for i=0 to pred (Array.length tab) do
+    res := !res && f tab.(i)
+  done;
+  !res
+
+
+type ('b,'c) vertex_n = {
+  attrvertex : 'c;
+  mutable predhedge : 'b Sette.t;
+  mutable succhedge : 'b Sette.t;
+}
+type ('a,'d) hedge_n = {
+  attrhedge : 'd;
+  predvertex : 'a array;
+  succvertex : 'a array;
+}
+type ('a,'b, 'c, 'd, 'e) t = {
+  vertex : ('a, ('b,'c) vertex_n) Hashhe.t;
+  hedge : ('b, ('a,'d) hedge_n) Hashhe.t;
+  info : 'e
+}
+
+let create size info = {
+  vertex = Hashhe.create size;
+  hedge = Hashhe.create size;
+  info = info;
+}
+
+let clear g =
+  Hashhe.clear g.vertex;
+  Hashhe.clear g.hedge;
+  ()
+
+(* *********************************************************************** *)
+(* Internal functions *)
+(* *********************************************************************** *)
+let vertex_n g v = Hashhe.find g.vertex v
+let hedge_n g n = Hashhe.find g.hedge n
+
+(* *********************************************************************** *)
+(* Information *)
+(* *********************************************************************** *)
+let size_vertex g =
+  Hashhe.length g.vertex
+let size_hedge g =
+  Hashhe.length g.hedge
+let size_edgevh g =
+  let n = ref 0 in
+  Hashhe.iter
+    (fun _ vertex_n ->
+      n := !n + Sette.cardinal vertex_n.succhedge)
+    g.vertex;
+  !n
+let size_edgehv g =
+  let n = ref 0 in
+  Hashhe.iter
+    (fun _ hedge_n ->
+      n := !n + Array.length hedge_n.succvertex)
+    g.hedge;
+  !n
+
+let size g =
+  (size_vertex g, size_hedge g, size_edgevh g, size_edgehv g)
+
+(* *********************************************************************** *)
+(* Access functions *)
+(* *********************************************************************** *)
+let attrvertex g v = (vertex_n g v).attrvertex
+let attrhedge g n = (hedge_n g n).attrhedge
+let info g = g.info
+
+(* *********************************************************************** *)
+(* Test functions *)
+(* *********************************************************************** *)
+let is_vertex g v = Hashhe.mem g.vertex v
+let is_hedge g n = Hashhe.mem g.hedge n
+let is_empty g =
+  try
+    Hashhe.iter
+	(fun _ _ -> raise Exit)
+	g.vertex;
+    true;
+  with Exit ->
+    false
+
+(* *********************************************************************** *)
+(* Successors and predecessors *)
+(* *********************************************************************** *)
+let succhedge g v = (vertex_n g v).succhedge
+let predhedge g v = (vertex_n g v).predhedge
+let succvertex g n = (hedge_n g n).succvertex
+let predvertex g n = (hedge_n g n).predvertex
+
+(* *********************************************************************** *)
+(* Addition of nodes and edges *)
+(* *********************************************************************** *)
+let add_vertex g v attrvertex =
+  Hashhe.replace g.vertex
+    v { attrvertex=attrvertex; succhedge=Sette.empty; predhedge=Sette.empty }
+
+let add_hedge g h attrhedge ~pred ~succ =
+  begin try
+    Array.iter
+      (fun v ->
+	let vertex_n =  vertex_n g v in
+	vertex_n.succhedge <- Sette.add h vertex_n.succhedge;
+      )
+      pred;
+    Array.iter
+      (fun v ->
+	let vertex_n =  vertex_n g v in
+	vertex_n.predhedge <- Sette.add h vertex_n.predhedge;
+      )
+      succ;
+  with Not_found ->
+    failwith "SHGraph.Make().add_hedge: origin vertex and/or destination hedge doesn't already exist"
+  end;
+  Hashhe.replace g.hedge
+    h { attrhedge=attrhedge; predvertex=pred; succvertex=succ }
+
+(* *********************************************************************** *)
+(* Removal of nodes and edges *)
+(* *********************************************************************** *)
+
+let remove_hedge g h =
+  try
+    let hedge_n = hedge_n g h in
+    Array.iter
+      (begin fun v ->
+	let vertex_n = vertex_n g v in
+	vertex_n.succhedge <- Sette.remove h vertex_n.succhedge
+      end)
+      hedge_n.predvertex;
+    Array.iter
+      (begin fun v ->
+	let vertex_n = vertex_n g v in
+	vertex_n.predhedge <- Sette.remove h vertex_n.predhedge
+      end)
+      hedge_n.succvertex;
+    Hashhe.remove g.hedge h;
+  with Not_found ->
+    ()
+
+let remove_vertex g v =
+  try
+    let vertex_n = vertex_n g v in
+    Sette.iter (fun h -> remove_hedge g h) vertex_n.predhedge;
+    Sette.iter (fun h -> remove_hedge g h) vertex_n.succhedge;
+    Hashhe.remove g.vertex v
+  with Not_found ->
+    ()
+
+(* *********************************************************************** *)
+(* Iterators *)
+(* *********************************************************************** *)
+
+let iter_vertex g f =
+  Hashhe.iter
+    (fun v vertex_n -> f v vertex_n.attrvertex ~pred:vertex_n.predhedge ~succ:vertex_n.succhedge)
+    g.vertex
+let iter_hedge g f =
+  Hashhe.iter
+    (fun n hedge_n -> f n hedge_n.attrhedge ~pred:hedge_n.predvertex ~succ:hedge_n.succvertex)
+    g.hedge
+
+let fold_vertex g f res =
+  Hashhe.fold
+    (fun v vertex_n res -> f v vertex_n.attrvertex ~pred:vertex_n.predhedge ~succ:vertex_n.succhedge  res)
+    g.vertex res
+let fold_hedge g f res =
+  Hashhe.fold
+    (fun n hedge_n res -> f n hedge_n.attrhedge ~pred:hedge_n.predvertex ~succ:hedge_n.succvertex res)
+    g.hedge res
+
+let map g map_attrvertex map_attrhedge map_info = {
+  vertex = begin
+    Hashhe.map 
+      (fun v vertex_n -> {
+	attrvertex = map_attrvertex v vertex_n.attrvertex ~pred:vertex_n.predhedge ~succ:vertex_n.succhedge;
+	predhedge = vertex_n.predhedge;
+	succhedge = vertex_n.succhedge
+      })
+      g.vertex
+  end;
+  hedge = begin
+    Hashhe.map
+      (fun h hedge_n -> {
+	attrhedge = map_attrhedge h hedge_n.attrhedge ~pred:hedge_n.predvertex ~succ:hedge_n.succvertex;
+	predvertex = hedge_n.predvertex;
+	succvertex = hedge_n.succvertex
+      })
+      g.hedge
+  end;
+  info = map_info g.info 
+}
+
+(* *********************************************************************** *)
+(* Misc functions *)
+(* *********************************************************************** *)
+
+let succ_vertex g v =
+  let succhedge = succhedge g v in
+  Sette.fold
+    (begin fun h res ->
+      let succvertex = succvertex g h in
+      Array.fold_left
+	(fun res v -> Sette.add v res)
+	res succvertex
+    end)
+    succhedge Sette.empty
+
+let pred_vertex g v =
+  let predhedge = predhedge g v in
+  Sette.fold
+    (begin fun h res ->
+      let predvertex = predvertex g h in
+      Array.fold_left
+	(fun res v -> Sette.add v res)
+	res predvertex
+    end)
+    predhedge Sette.empty
+
+(* *********************************************************************** *)
+(* Copy *)
+(* *********************************************************************** *)
+
+let copy copy_attrvertex copy_attrhedge copy_info g = {
+  vertex = begin
+    Hashhe.map 
+      (fun v vertex_n -> {
+	attrvertex = copy_attrvertex v vertex_n.attrvertex;
+	predhedge = vertex_n.predhedge;
+	succhedge = vertex_n.succhedge
+      })
+      g.vertex
+  end;
+  hedge = begin
+    Hashhe.map
+      (fun h hedge_n -> {
+	attrhedge = copy_attrhedge h hedge_n.attrhedge;
+	predvertex = hedge_n.predvertex;
+	succvertex = hedge_n.succvertex
+      })
+      g.hedge
+  end;
+  info = copy_info g.info 
+}
+
+let transpose copy_attrvertex copy_attrhedge copy_info g = {
+  vertex = begin
+    Hashhe.map 
+      (fun v vertex_n -> {
+	attrvertex = copy_attrvertex v vertex_n.attrvertex;
+	predhedge = vertex_n.succhedge;
+	succhedge = vertex_n.predhedge
+      })
+      g.vertex
+  end;
+  hedge = begin
+    Hashhe.map
+      (fun h hedge_n -> {
+	attrhedge = copy_attrhedge h hedge_n.attrhedge;
+	predvertex = hedge_n.succvertex;
+	succvertex = hedge_n.predvertex
+      })
+      g.hedge
+  end;
+  info = copy_info g.info 
+}
+
+(* *********************************************************************** *)
+(* Very internal functions *)
+(* *********************************************************************** *)
+let add_dummy_forward (vertex_dummy:'a) (hedge_dummy:'b) g (root:'a Sette.t) : unit =
+  Hashhe.add g.vertex vertex_dummy
+    { attrvertex=Obj.magic 0;
+      succhedge=Sette.singleton hedge_dummy;
+      predhedge=Sette.empty };
+  Hashhe.add g.hedge hedge_dummy
+    { attrhedge=Obj.magic 0;
+      succvertex=begin
+	let tab = Array.make (Sette.cardinal root) (Sette.choose root) in
+	let i = ref 0 in
+	Sette.iter (fun v -> tab.(!i) <- v; incr i) root;
+	tab
+      end;
+      predvertex=[|vertex_dummy|] };
+  ()
+
+let rem_dummy (vertex_dummy:'a) (hedge_dummy:'b) g : unit =
+  Hashhe.remove g.vertex vertex_dummy;
+  Hashhe.remove g.hedge hedge_dummy
+
+(* *********************************************************************** *)
+(* Topological sort *)
+(* *********************************************************************** *)
+
+let topological_sort_aux
+  ?(filter=(fun _ -> true))
+  (g:('a,'b,'c,'d,'e) t)
+  (root:'a)
+  =
+  let hash = Hashhe.create 23 in
+  let rec visit res v =
+    if Hashhe.mem hash v then
+      res
+    else begin
+      Hashhe.add hash v ();
+      Sette.fold
+	(begin fun h res ->
+	  if filter h then begin
+	    let hedge_n = hedge_n g h in
+	    let cond =
+	      array_forall
+		(Hashhe.mem hash)
+		hedge_n.predvertex
+	    in
+	    if cond then begin
+	      Array.fold_left
+		visit
+		res
+		hedge_n.succvertex
+	    end
+	    else res
+	  end
+	  else
+	    res
+	end)
+	(succhedge g v)
+	(v::res)
+    end
+  in
+  let res = visit [] root in
+  List.rev res
+
+let topological_sort g root =
+  topological_sort_aux g root
+
+let topological_sort_multi vertex_dummy hedge_dummy g root =
+  add_dummy_forward vertex_dummy hedge_dummy g root;
+  let res = topological_sort g vertex_dummy in
+  rem_dummy vertex_dummy hedge_dummy g;
+  List.tl res
+
+let topological_sort_filter_multi vertex_dummy hedge_dummy g filter root =
+  add_dummy_forward vertex_dummy hedge_dummy g root;
+  let res =
+    topological_sort_aux
+      ~filter:(fun h -> if h = hedge_dummy then true else filter h)
+      g vertex_dummy
+  in
+  rem_dummy vertex_dummy hedge_dummy g;
+  List.tl res
+
+(* *********************************************************************** *)
+(* Reachability/Coreachability *)
+(* *********************************************************************** *)
+let reachable_aux
+  ?(filter=(fun _ -> true))
+  (g:('a,'b,'c,'d,'e) t)
+  (root:'a)
+  =
+  let hashv = Hashhe.create 23 in
+  let hashh = Hashhe.create 23 in
+  let rec visit v =
+    if not (Hashhe.mem hashv v) then begin
+      Hashhe.add hashv v ();
+      Sette.iter
+	(begin fun h ->
+	  if filter h && not (Hashhe.mem hashh h) then begin
+	    let hedge_n = hedge_n g h in
+	    let cond =
+	      array_forall
+		(Hashhe.mem hashv)
+		hedge_n.predvertex
+	    in
+	    if cond then begin
+	      Hashhe.add hashh h ();
+	      Array.iter
+		visit
+		hedge_n.succvertex
+	    end
+	  end
+	end)
+	(succhedge g v)
+    end
+  in
+  visit root;
+  let setv =
+    fold_vertex g
+      (begin fun v _ ~pred:_ ~succ:_ res ->
+	if not (Hashhe.mem hashv v)
+	then Sette.add v res
+	else res
+      end)
+      Sette.empty
+  and setn =
+    fold_hedge g
+      (begin fun h _ ~pred:_ ~succ:_ res ->
+	if not (Hashhe.mem hashh h)
+	then Sette.add h res
+	else res
+      end)
+      Sette.empty
+  in
+  (setv,setn)
+
+let reachable g root =
+  reachable_aux g root
+
+let reachable_multi vertex_dummy hedge_dummy g root =
+  add_dummy_forward vertex_dummy hedge_dummy g root;
+  let res = reachable g vertex_dummy in
+  rem_dummy vertex_dummy hedge_dummy g;
+  let (vertices,hedges) = res in
+  (Sette.remove vertex_dummy vertices,
+  Sette.remove hedge_dummy hedges)
+
+let reachable_filter_multi vertex_dummy hedge_dummy g filter root =
+  add_dummy_forward vertex_dummy hedge_dummy g root;
+  let res =
+    reachable_aux
+      ~filter:(fun h -> if h = hedge_dummy then true else filter h)
+      g vertex_dummy
+  in
+  rem_dummy vertex_dummy hedge_dummy g;
+  let (vertices,hedges) = res in
+  (Sette.remove vertex_dummy vertices,
+  Sette.remove hedge_dummy hedges)
+
+(* *********************************************************************** *)
+(* Strongly Connected Components *)
+(* *********************************************************************** *)
+let cfc_aux
+  ?(filter=(fun _ -> true))
+  g root
+  =
+  let
+    num     = ref(-1) and
+    partition = ref [] and
+    pile    = Stack.create() and
+    hash    = Hashhe.create 23
+  in
+  let rec visit sommet =
+    Stack.push sommet pile;
+    incr num;
+    let num_sommet = !num in
+    Hashhe.replace hash sommet num_sommet;
+    let head =
+      Sette.fold
+	(begin fun h head ->
+	  if filter h then begin
+	    let hedge_n = hedge_n g h in
+	    let cond =
+	      array_forall
+		(fun v -> Hashhe.find hash v > min_int)
+		hedge_n.predvertex
+	    in
+	    if cond then begin
+	      Array.fold_left
+		(begin fun head succ ->
+		  let dfn = Hashhe.find hash succ in
+		  let m = if dfn=min_int then (visit succ) else dfn in
+		  min m head
+		end)
+		head
+		hedge_n.succvertex
+	    end
+	    else head
+	  end
+	  else
+	    head
+	end)
+	(succhedge g sommet)
+	!num
+    in
+    if head = num_sommet then
+      begin
+	let element = ref (Stack.pop pile) in
+	let composante = ref [!element] in
+	Hashhe.replace hash !element max_int;
+	while !element <> sommet do
+	  element := Stack.pop pile;
+	  Hashhe.replace hash !element max_int;
+	  composante := !element :: !composante
+	done;
+	partition := !composante :: !partition
+      end;
+    head
+  in
+  iter_vertex g (fun v _ ~pred:_ ~succ:_ -> Hashhe.add hash v min_int);
+  let _ = visit root in
+  !partition
+
+let cfc g root = cfc_aux g root
+
+let cfc_multi vertex_dummy hedge_dummy g root =
+  add_dummy_forward vertex_dummy hedge_dummy g root;
+  let res = cfc g vertex_dummy in
+  rem_dummy vertex_dummy hedge_dummy g;
+  begin match res with
+  | (x::r)::l when (compare x vertex_dummy)=0 -> r::l
+  | _ -> failwith "hGgraph.ml: Make().cfc_multi"
+  end
+
+let cfc_filter_multi vertex_dummy hedge_dummy g filter root =
+  add_dummy_forward vertex_dummy hedge_dummy g root;
+  let res =
+    cfc_aux
+      ~filter:(fun h -> if h = hedge_dummy then true else filter h)
+      g vertex_dummy
+  in
+  rem_dummy vertex_dummy hedge_dummy g;
+  begin match res with
+  | (x::r)::l when (compare x vertex_dummy)=0 -> r::l
+  | _ -> failwith "hGgraph.ml: Make().cfc_multi"
+  end
+
+(* *********************************************************************** *)
+(* Strongly Connected Sub-Components *)
+(* *********************************************************************** *)
+let scfc_aux
+  ?(filter=(fun _ -> true))
+  g
+  root
+  =
+  let num     = ref(-1) and
+    pile    = Stack.create() and
+    hash    = Hashhe.create (size_vertex g)
+  in
+  let rec composante sommet =
+    let partition = ref Ilist.Nil in
+    Sette.iter
+      (begin fun h ->
+	if filter h then begin
+	  let hedge_n = hedge_n g h in
+	  let cond =
+	    array_forall
+	      (fun v -> Hashhe.find hash v > min_int)
+	      hedge_n.predvertex
+	  in
+	  if cond then begin
+	    Array.iter
+	      (begin fun succ ->
+		if Hashhe.find hash succ = min_int then begin
+		  ignore (visit succ partition)
+		end
+	      end)
+	      hedge_n.succvertex
+	  end
+	end
+      end)
+      (succhedge g sommet)
+    ;
+    Ilist.Cons(Ilist.Atome sommet, !partition)
+  and visit sommet partition =
+    Stack.push sommet pile;
+    incr num;
+    let num_sommet = !num in
+    Hashhe.replace hash sommet num_sommet;
+    let head = ref !num and loop = ref false in
+    Sette.iter
+      (begin fun h ->
+	if filter h then begin
+	  let hedge_n = hedge_n g h in
+	  let cond =
+	    array_forall
+	      (fun v -> Hashhe.find hash v > min_int)
+	      hedge_n.predvertex
+	  in
+	  if cond then begin
+	    Array.iter
+	      (begin fun succ ->
+		let dfn = Hashhe.find hash succ in
+		let m =
+		  if dfn=min_int
+		  then (visit succ partition)
+		  else dfn
+		in
+		if m <= !head then begin loop := true; head := m end
+	      end)
+	      hedge_n.succvertex
+	  end
+	end
+      end)
+      (succhedge g sommet)
+    ;
+    if !head = num_sommet then
+      begin
+	Hashhe.replace hash sommet max_int;
+	let element = ref (Stack.pop pile) in
+	if !loop then
+	  begin
+	    while !element <> sommet do
+	      Hashhe.replace hash !element min_int;
+	      element := Stack.pop pile
+	    done;
+	    partition := Ilist.Cons(Ilist.List(composante sommet),!partition )
+	  end
+	else
+	  partition := Ilist.Cons(Ilist.Atome(sommet),!partition)
+      end;
+    !head
+  in
+
+  iter_vertex g (fun v _ ~pred:_ ~succ:_ -> Hashhe.add hash v min_int);
+  let partition = ref Ilist.Nil in
+  let _ = visit root partition in
+  !partition
+
+let scfc g root =
+  scfc_aux g root
+
+let scfc_multi vertex_dummy hedge_dummy g root =
+  add_dummy_forward vertex_dummy hedge_dummy g root;
+  let res = scfc g vertex_dummy in
+  rem_dummy vertex_dummy hedge_dummy g;
+  begin match res with
+  | Ilist.Cons(Ilist.Atome(x),l) when (compare x vertex_dummy) = 0 -> l
+  | _ -> failwith "hGraph.ml: Make().scfc_multi"
+  end
+
+let scfc_filter_multi vertex_dummy hedge_dummy g filter root =
+  add_dummy_forward vertex_dummy hedge_dummy g root;
+  let res = scfc_aux
+      ~filter:(fun h -> if h = hedge_dummy then true else filter h)
+      g vertex_dummy
+  in
+  rem_dummy vertex_dummy hedge_dummy g;
+  begin match res with
+  | Ilist.Cons(Ilist.Atome(x),l) when (compare x vertex_dummy) = 0 -> l
+  | _ -> failwith "hGraph.ml: Make().scfc_multi"
+  end
+
+(* *********************************************************************** *)
+(* Printing *)
+(* *********************************************************************** *)
+let print
+  print_vertex print_hedge print_attrvertex print_attrhedge print_info
+  formatter g
+  =
+  let printv v =
+    let vertex_n = vertex_n g v in
+    fprintf formatter
+      "{ @[<hv>v = %a, attrvertex = %a,@ succhedge = %a,@ predhedge = %a@] }@ "
+      print_vertex v
+      print_attrvertex vertex_n.attrvertex
+      (Sette.print print_hedge) vertex_n.succhedge
+      (Sette.print print_hedge) vertex_n.predhedge
+  and printh h =
+    let hedge_n = hedge_n g h in
+    fprintf formatter
+      "{ @[<hv>n = %a, attrhedge = %a,@ succvertex = %a,@ predvertex = %a@] }@ "
+      print_hedge h
+      print_attrhedge hedge_n.attrhedge
+      (Print.array print_vertex) hedge_n.succvertex
+      (Print.array print_vertex) hedge_n.predvertex
+  in
+
+  (* Build the set of vertices and hedges and sort it *)
+  fprintf formatter "[@[<v>@ ";
+  let vertices =
+    Hashhe.fold (fun v _ res -> Sette.add v res) g.vertex Sette.empty
+  in
+  Sette.iter printv vertices;
+  let hedges =
+    Hashhe.fold (fun n _ res -> Sette.add n res) g.hedge Sette.empty
+  in
+  Sette.iter printh hedges;
+  fprintf formatter "info = %a@ " print_info g.info;
+
+  fprintf formatter "@ ]@]";
+  ()
+
+let print_dot
+  ?(titlestyle:string="shape=ellipse,style=bold,style=filled,fontsize=20")
+  ?(vertexstyle:string="shape=box,fontsize=12")
+  ?(hedgestyle:string="shape=ellipse,fontsize=12")
+  ?(title:string="")
+  print_vertex print_hedge print_attrvertex print_attrhedge
+  fmt g
+  =
+  fprintf fmt "digraph G {@.  @[<v>";
+  if title<>"" then
+    fprintf fmt "1073741823 [%s,label=\"%s\"];@ " titlestyle title;
+  Hashhe.iter
+    (begin fun vertex vertex_n ->
+      fprintf fmt "%a [%s,label=\"%t\"];@ "
+      print_vertex vertex
+      vertexstyle
+      (fun fmt -> print_attrvertex fmt vertex vertex_n.attrvertex);
+    end)
+    g.vertex;
+  Hashhe.iter
+    (begin fun hedge hedge_n ->
+      fprintf fmt "%a [%s,label=\"%t\"];@ "
+      print_hedge hedge
+      hedgestyle
+      (fun fmt -> print_attrhedge fmt hedge hedge_n.attrhedge);
+    end)
+    g.hedge;
+  Hashhe.iter
+    (begin fun hedge hedge_n ->
+      Array.iter
+      (begin fun pred ->
+	fprintf fmt "%a -> %a;@ "
+	print_vertex pred print_hedge hedge
+      end)
+      hedge_n.predvertex;
+      Array.iter
+      (begin fun succ ->
+	fprintf fmt "%a -> %a;@ "
+	print_hedge hedge print_vertex succ
+      end)
+      hedge_n.succvertex
+    end)
+    g.hedge
+  ;
+  fprintf fmt "@]@.}@.";
+  ()
+
+module type T = sig
+  include SHGraph.T
+end
+
+module type S = sig
+  include SHGraph.S
+end
+
+module Make(T : T) : (S with type vertex=T.vertex
+			and type hedge=T.hedge
+			and module SetV=T.SetV
+			and module SetH=T.SetH) = struct
+
+  type vertex = T.vertex
+  type hedge = T.hedge
+  module SetV = T.SetV
+  module SetH = T.SetH
+  module HashV = T.HashV
+  module HashH = T.HashH
+
+  type 'a vertex_n = {
+    attrvertex : 'a;
+    mutable predhedge : SetH.t;
+    mutable succhedge : SetH.t;
+  }
+  type 'b hedge_n = {
+    attrhedge : 'b;
+    mutable predvertex : vertex array;
+    mutable succvertex : vertex array;
+  }
+  type ('a, 'b, 'c) t = {
+    vertex : 'a vertex_n HashV.t;
+    hedge : 'b hedge_n HashH.t;
+    info : 'c
+  }
+
+  let create size info = {
+    vertex = HashV.create size;
+    hedge = HashH.create size;
+    info = info;
+  }
+let clear g =
+  HashV.clear g.vertex;
+  HashH.clear g.hedge;
+  ()
+
+  (* *********************************************************************** *)
+  (* Internal functions *)
+  (* *********************************************************************** *)
+  let vertex_n g v = HashV.find g.vertex v
+  let hedge_n g n = HashH.find g.hedge n
+  let info g = g.info
+
+  (* *********************************************************************** *)
+  (* Information *)
+  (* *********************************************************************** *)
+  let size_vertex g = HashV.length g.vertex
+  let size_hedge g = HashH.length g.hedge
+  let size_edgevh g =
+    let n = ref 0 in
+    HashV.iter
+      (fun _ vertex_n ->
+	n := !n + SetH.cardinal vertex_n.succhedge)
+      g.vertex;
+    !n
+  let size_edgehv g =
+    let n = ref 0 in
+    HashH.iter
+      (fun _ hedge_n ->
+	n := !n + Array.length hedge_n.succvertex)
+      g.hedge;
+    !n
+
+  let size g =
+    (size_vertex g, size_hedge g, size_edgevh g, size_edgehv g)
+
+  (* *********************************************************************** *)
+  (* Access functions *)
+  (* *********************************************************************** *)
+  let attrvertex g v = (vertex_n g v).attrvertex
+  let attrhedge g n = (hedge_n g n).attrhedge
+
+  (* *********************************************************************** *)
+  (* Test functions *)
+  (* *********************************************************************** *)
+  let is_vertex g v = HashV.mem g.vertex v
+  let is_hedge g n = HashH.mem g.hedge n
+  let is_empty g =
+    try
+      HashV.iter
+	(fun _ _ -> raise Exit)
+	g.vertex;
+      true;
+    with Exit ->
+      false
+
+  (* *********************************************************************** *)
+  (* Successors and predecessors *)
+  (* *********************************************************************** *)
+  let succhedge g v = (vertex_n g v).succhedge
+  let predhedge g v = (vertex_n g v).predhedge
+  let succvertex g n = (hedge_n g n).succvertex
+  let predvertex g n = (hedge_n g n).predvertex
+
+  (* *********************************************************************** *)
+  (* Addition of nodes and edges *)
+  (* *********************************************************************** *)
+  let add_vertex g v attrvertex =
+    HashV.replace g.vertex
+      v { attrvertex=attrvertex; succhedge=SetH.empty; predhedge=SetH.empty }
+
+  let add_hedge g h attrhedge ~(pred:vertex array) ~(succ:vertex array) =
+    begin try
+      Array.iter
+	(fun v ->
+	  let vertex_n =  vertex_n g v in
+	  vertex_n.succhedge <- SetH.add h vertex_n.succhedge;
+	)
+	pred;
+      Array.iter
+	(fun v ->
+	  let vertex_n =  vertex_n g v in
+	  vertex_n.predhedge <- SetH.add h vertex_n.predhedge;
+	)
+	succ;
+    with Not_found ->
+      failwith "SHGraph.Make().add_hedge: origin vertex and/or destination hedge doesn't already exist"
+    end;
+    HashH.replace g.hedge
+      h { attrhedge=attrhedge; predvertex=pred; succvertex=succ }
+
+  (* *********************************************************************** *)
+  (* Removal of nodes and edges *)
+  (* *********************************************************************** *)
+
+  let remove_hedge g h =
+    try
+      let hedge_n = hedge_n g h in
+      Array.iter
+	(begin fun v ->
+	  let vertex_n = vertex_n g v in
+	  vertex_n.succhedge <- SetH.remove h vertex_n.succhedge
+	end)
+	hedge_n.predvertex;
+      Array.iter
+	(begin fun v ->
+	  let vertex_n = vertex_n g v in
+	  vertex_n.predhedge <- SetH.remove h vertex_n.predhedge
+	end)
+	hedge_n.succvertex;
+      HashH.remove g.hedge h;
+    with Not_found ->
+      ()
+
+  let remove_vertex g v =
+    try
+      let vertex_n = vertex_n g v in
+      SetH.iter (fun h -> remove_hedge g h) vertex_n.predhedge;
+      SetH.iter (fun h -> remove_hedge g h) vertex_n.succhedge;
+      HashV.remove g.vertex v
+    with Not_found ->
+      ()
+
+  (* *********************************************************************** *)
+  (* Iterators *)
+  (* *********************************************************************** *)
+
+  let iter_vertex g f =
+    HashV.iter
+      (fun v vertex -> f v vertex.attrvertex ~pred:vertex.predhedge ~succ:vertex.succhedge)
+      g.vertex
+  let iter_hedge g f =
+    HashH.iter
+      (fun n hedge -> f n hedge.attrhedge ~pred:hedge.predvertex ~succ:hedge.succvertex)
+      g.hedge
+
+  let fold_vertex g f res =
+    HashV.fold
+      (fun v vertex res -> f v vertex.attrvertex ~pred:vertex.predhedge ~succ:vertex.succhedge  res)
+      g.vertex res
+  let fold_hedge g f res =
+    HashH.fold
+      (fun n hedge res -> f n hedge.attrhedge ~pred:hedge.predvertex ~succ:hedge.succvertex res)
+      g.hedge res
+
+  let map = Obj.magic map
+
+  (* *********************************************************************** *)
+  (* Misc functions *)
+  (* *********************************************************************** *)
+
+  let succ_vertex g v =
+    let succhedge = succhedge g v in
+    SetH.fold
+      (begin fun h res ->
+	let succvertex = succvertex g h in
+	Array.fold_left
+	  (fun res v -> SetV.add v res)
+	  res succvertex
+      end)
+      succhedge SetV.empty
+
+  let pred_vertex g v =
+    let predhedge = predhedge g v in
+    SetH.fold
+      (begin fun h res ->
+	let predvertex = predvertex g h in
+	Array.fold_left
+	  (fun res v -> SetV.add v res)
+	  res predvertex
+      end)
+      predhedge SetV.empty
+
+  (* *********************************************************************** *)
+  (* Copy *)
+  (* *********************************************************************** *)
+
+  let copy = Obj.magic copy
+
+  let transpose = Obj.magic transpose
+
+(* *********************************************************************** *)
+(* Very internal functions *)
+(* *********************************************************************** *)
+
+  let add_dummy_forward g (root:SetV.t) : unit =
+    HashV.add g.vertex T.vertex_dummy
+      { attrvertex=Obj.magic 0;
+      succhedge=SetH.singleton T.hedge_dummy;
+      predhedge=SetH.empty };
+    HashH.add g.hedge T.hedge_dummy
+      { attrhedge=Obj.magic 0;
+        succvertex=begin
+	  let tab = Array.make (SetV.cardinal root) (SetV.choose root) in
+	  let i = ref 0 in
+	  SetV.iter (fun v -> tab.(!i) <- v; incr i) root;
+	  tab
+	end;
+	predvertex=[|T.vertex_dummy|] };
+    ()
+
+  let rem_dummy g : unit =
+    HashV.remove g.vertex T.vertex_dummy;
+    HashH.remove g.hedge T.hedge_dummy
+
+  (* *********************************************************************** *)
+  (* Topological sort *)
+  (* *********************************************************************** *)
+
+  let topological_sort_aux
+    ?(filter=(fun _ -> true))
+    (g:('a,'b,'c) t)
+    (root:vertex)
+    :
+    vertex list
+    =
+    let hash = HashV.create 23 in
+    let rec visit res v =
+      if HashV.mem hash v then
+	res
+      else begin
+	HashV.add hash v ();
+	SetH.fold
+	  (begin fun h res ->
+	    if filter h then begin
+	      let hedge_n = hedge_n g h in
+	      let cond =
+		array_forall
+		  (HashV.mem hash)
+		  hedge_n.predvertex
+	      in
+	      if cond then begin
+		Array.fold_left
+		  visit
+		  res
+		  hedge_n.succvertex
+	      end
+	      else res
+	    end
+	    else
+	      res
+	  end)
+	  (succhedge g v)
+	  (v::res)
+      end
+    in
+    let res = visit [] root in
+    List.rev res
+
+let topological_sort g root =
+  topological_sort_aux g root
+
+let topological_sort_multi g root =
+  add_dummy_forward g root;
+  let res = topological_sort g T.vertex_dummy in
+  rem_dummy g;
+  List.tl res
+
+let topological_sort_filter_multi g filter root =
+  add_dummy_forward g root;
+  let res =
+    topological_sort_aux
+      ~filter:(fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then true else filter h)
+      g T.vertex_dummy
+  in
+  rem_dummy g;
+  List.tl res
+
+(* *********************************************************************** *)
+(* Reachability/Coreachability *)
+(* *********************************************************************** *)
+let reachable_aux
+  ?(filter=(fun _ -> true))
+  (g:('a,'b,'c) t)
+  (root:vertex)
+  =
+  let hashv = HashV.create 23 in
+  let hashh = HashH.create 23 in
+  let rec visit v =
+    if not (HashV.mem hashv v) then begin
+      HashV.add hashv v ();
+      SetH.iter
+	(begin fun h ->
+	  if filter h && not (HashH.mem hashh h) then begin
+	    let hedge_n = hedge_n g h in
+	    let cond =
+	      array_forall
+		(HashV.mem hashv)
+		hedge_n.predvertex
+	    in
+	    if cond then begin
+	      HashH.add hashh h ();
+	      Array.iter
+		visit
+		hedge_n.succvertex
+	    end
+	  end
+	end)
+	(succhedge g v)
+    end
+  in
+  visit root;
+  let setv =
+    fold_vertex g
+      (begin fun v _ ~pred:_ ~succ:_ res ->
+	if not (HashV.mem hashv v)
+	then SetV.add v res
+	else res
+      end)
+      SetV.empty
+  and setn =
+    fold_hedge g
+      (begin fun h _ ~pred:_ ~succ:_ res ->
+	if not (HashH.mem hashh h)
+	then SetH.add h res
+	else res
+      end)
+      SetH.empty
+  in
+  (setv,setn)
+
+let reachable g root =
+  reachable_aux g root
+
+let reachable_multi g root =
+  add_dummy_forward g root;
+  let res = reachable g T.vertex_dummy in
+  rem_dummy g;
+  let (vertices,hedges) = res in
+  (SetV.remove T.vertex_dummy vertices,
+  SetH.remove T.hedge_dummy hedges)
+
+let reachable_filter_multi g filter root =
+  add_dummy_forward g root;
+  let res =
+    reachable_aux
+      ~filter:(fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then true else filter h)
+      g T.vertex_dummy
+  in
+  rem_dummy g;
+  let (vertices,hedges) = res in
+  (SetV.remove T.vertex_dummy vertices,
+  SetH.remove T.hedge_dummy hedges)
+
+(* *********************************************************************** *)
+(* Strongly Connected Components *)
+(* *********************************************************************** *)
+let cfc_aux
+  ?(filter=(fun _ -> true))
+  (g:('a,'b,'c) t)
+  (root:vertex)
+  =
+  let
+    num     = ref(-1) and
+    partition = ref [] and
+    pile    = Stack.create() and
+    hash    = HashV.create 23
+  in
+  let rec visit sommet =
+    Stack.push sommet pile;
+    incr num;
+    let num_sommet = !num in
+    HashV.replace hash sommet num_sommet;
+    let head =
+      SetH.fold
+	(begin fun h head ->
+	  if filter h then begin
+	    let hedge_n = hedge_n g h in
+	    let cond =
+	      array_forall
+		(fun v -> HashV.find hash v > min_int)
+		hedge_n.predvertex
+	    in
+	    if cond then begin
+	      Array.fold_left
+		(begin fun head succ ->
+		  let dfn = HashV.find hash succ in
+		  let m = if dfn=min_int then (visit succ) else dfn in
+		  min m head
+		end)
+		head
+		hedge_n.succvertex
+	    end
+	    else head
+	  end
+	  else
+	    head
+	end)
+	(succhedge g sommet)
+	!num
+    in
+    if head = num_sommet then
+      begin
+	let element = ref (Stack.pop pile) in
+	let composante = ref [!element] in
+	HashV.replace hash !element max_int;
+	while !element <> sommet do
+	  element := Stack.pop pile;
+	  HashV.replace hash !element max_int;
+	  composante := !element :: !composante
+	done;
+	partition := !composante :: !partition
+      end;
+    head
+  in
+  iter_vertex g (fun v _ ~pred:_ ~succ:_ -> HashV.add hash v min_int);
+  let _ = visit root in
+  !partition
+
+let cfc g root = cfc_aux g root
+
+let cfc_multi g root =
+  add_dummy_forward g root;
+  let res = cfc g T.vertex_dummy in
+  rem_dummy g;
+  begin match res with
+  | (x::r)::l when (SetV.Ord.compare x T.vertex_dummy)=0 -> r::l
+  | _ -> failwith "hGgraph.ml: Make().cfc_multi"
+  end
+
+let cfc_filter_multi g filter root =
+  add_dummy_forward g root;
+  let res =
+    cfc_aux
+      ~filter:(fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then true else filter h)
+      g T.vertex_dummy
+  in
+  rem_dummy g;
+  begin match res with
+  | (x::r)::l when (SetV.Ord.compare x T.vertex_dummy)=0 -> r::l
+  | _ -> failwith "hGgraph.ml: Make().cfc_multi"
+  end
+
+(* *********************************************************************** *)
+(* Strongly Connected Sub-Components *)
+(* *********************************************************************** *)
+let scfc_aux
+  ?(filter=(fun _ -> true))
+  g
+  root
+  =
+  let num     = ref(-1) and
+    pile    = Stack.create() and
+    hash    = HashV.create (size_vertex g)
+  in
+  let rec composante sommet =
+    let partition = ref Ilist.Nil in
+    SetH.iter
+      (begin fun h ->
+	if filter h then begin
+	  let hedge_n = hedge_n g h in
+	  let cond =
+	    array_forall
+	      (fun v -> HashV.find hash v > min_int)
+	      hedge_n.predvertex
+	  in
+	  if cond then begin
+	    Array.iter
+	      (begin fun succ ->
+		if HashV.find hash succ = min_int then begin
+		  ignore (visit succ partition)
+		end
+	      end)
+	      hedge_n.succvertex
+	  end
+	end
+      end)
+      (succhedge g sommet)
+    ;
+    Ilist.Cons(Ilist.Atome sommet, !partition)
+  and visit sommet partition =
+    Stack.push sommet pile;
+    incr num;
+    let num_sommet = !num in
+    HashV.replace hash sommet num_sommet;
+    let head = ref !num and loop = ref false in
+    SetH.iter
+      (begin fun h ->
+	if filter h then begin
+	  let hedge_n = hedge_n g h in
+	  let cond =
+	    array_forall
+	      (fun v -> HashV.find hash v > min_int)
+	      hedge_n.predvertex
+	  in
+	  if cond then begin
+	    Array.iter
+	      (begin fun succ ->
+		let dfn = HashV.find hash succ in
+		let m =
+		  if dfn=min_int
+		  then (visit succ partition)
+		  else dfn
+		in
+		if m <= !head then begin loop := true; head := m end
+	      end)
+	      hedge_n.succvertex
+	  end
+	end
+      end)
+      (succhedge g sommet)
+    ;
+    if !head = num_sommet then
+      begin
+	HashV.replace hash sommet max_int;
+	let element = ref (Stack.pop pile) in
+	if !loop then
+	  begin
+	    while !element <> sommet do
+	      HashV.replace hash !element min_int;
+	      element := Stack.pop pile
+	    done;
+	    partition := Ilist.Cons(Ilist.List(composante sommet),!partition )
+	  end
+	else
+	  partition := Ilist.Cons(Ilist.Atome(sommet),!partition)
+      end;
+    !head
+  in
+
+  iter_vertex g (fun v _ ~pred:_ ~succ:_ -> HashV.add hash v min_int);
+  let partition = ref Ilist.Nil in
+  let _ = visit root partition in
+  !partition
+
+let scfc g root =
+  scfc_aux g root
+
+let scfc_multi g root =
+  add_dummy_forward g root;
+  let res = scfc g T.vertex_dummy in
+  rem_dummy g;
+  begin match res with
+  | Ilist.Cons(Ilist.Atome(x),l) when (SetV.Ord.compare x T.vertex_dummy) = 0 -> l
+  | _ -> failwith "hGraph.ml: Make().scfc_multi"
+  end
+
+let scfc_filter_multi g filter root =
+  add_dummy_forward g root;
+  let res = scfc_aux
+      ~filter:(fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then true else filter h)
+      g T.vertex_dummy
+  in
+  rem_dummy g;
+  begin match res with
+  | Ilist.Cons(Ilist.Atome(x),l) when (SetV.Ord.compare x T.vertex_dummy) = 0 -> l
+  | _ -> failwith "hGraph.ml: Make().scfc_multi"
+  end
+
+  (* *********************************************************************** *)
+  (* Min and Max *)
+  (* *********************************************************************** *)
+  let min g =
+    HashV.fold
+      (fun v vertex_n res ->
+	if vertex_n.predhedge = SetH.empty
+	then SetV.add v res
+	else res)
+      g.vertex SetV.empty
+  let max g =
+    HashV.fold
+      (fun v vertex_n res ->
+	if vertex_n.succhedge = SetH.empty
+	then SetV.add v res
+	else res)
+      g.vertex SetV.empty
+
+  (* *********************************************************************** *)
+  (* Printing *)
+  (* *********************************************************************** *)
+  let print
+    print_vertex print_hedge print_attrvertex print_attrhedge print_info
+    formatter g
+    =
+    let printv v =
+      let vertex_n = vertex_n g v in
+      fprintf formatter
+	"{ v = %a, @[<hv>attrvertex = %a,@ succhedge = %a,@ predhedge = %a@] }@ "
+	print_vertex v
+	print_attrvertex vertex_n.attrvertex
+	(SetH.print print_hedge) vertex_n.succhedge
+	(SetH.print print_hedge) vertex_n.predhedge
+    and printn n =
+      let hedge_n = hedge_n g n in
+      fprintf formatter
+	"{ n = %a, @[<hv>attrhedge = %a,@ succvertex = %a,@ predvertex = %a@] }@ "
+	print_hedge n
+	print_attrhedge hedge_n.attrhedge
+	(Print.array print_vertex) hedge_n.succvertex
+	(Print.array print_vertex) hedge_n.predvertex
+    in
+
+    (* Build the set of vertices and hedges and sort it *)
+    fprintf formatter "[@[<v>@ ";
+    let vertices =
+      HashV.fold (fun v _ res -> SetV.add v res) g.vertex SetV.empty
+    in
+    SetV.iter printv vertices;
+    let hedges =
+      HashH.fold (fun n _ res -> SetH.add n res) g.hedge SetH.empty
+    in
+    SetH.iter printn hedges;
+    fprintf formatter "info = %a" print_info g.info;
+    fprintf formatter "@ ]@]";
+    ()
+
+  let print_dot
+    ?(titlestyle:string="shape=ellipse,style=bold,style=filled,fontsize=20")
+    ?(vertexstyle:string="shape=box,fontsize=12")
+    ?(hedgestyle:string="shape=ellipse,fontsize=12")
+    ?(title:string="")
+    print_vertex print_hedge print_attrvertex print_attrhedge
+    fmt g
+    =
+    fprintf fmt "digraph G {@.  @[<v>";
+    if title<>"" then
+      fprintf fmt "1073741823 [%s,label=\"%s\"];@ " titlestyle title;
+    HashV.iter
+      (begin fun vertex vertex_n ->
+	fprintf fmt "%a [%s,label=\"%t\"];@ "
+	print_vertex vertex
+	vertexstyle
+	(fun fmt -> print_attrvertex fmt vertex vertex_n.attrvertex);
+      end)
+      g.vertex;
+    HashH.iter
+      (begin fun hedge hedge_n ->
+	fprintf fmt "%a [%s,label=\"%t\"];@ "
+	print_hedge hedge
+	hedgestyle
+	(fun fmt -> print_attrhedge fmt hedge hedge_n.attrhedge);
+      end)
+      g.hedge;
+    HashH.iter
+      (begin fun hedge hedge_n ->
+	Array.iter
+	(begin fun pred ->
+	  fprintf fmt "%a -> %a;@ "
+	  print_vertex pred print_hedge hedge
+	end)
+	hedge_n.predvertex;
+	Array.iter
+	  (begin fun succ ->
+	    fprintf fmt "%a -> %a;@ "
+	    print_hedge hedge print_vertex succ
+	  end)
+	  hedge_n.succvertex
+      end)
+      g.hedge
+    ;
+    fprintf fmt "@]@.}@.";
+    ()
+end
+
+(* *********************************************************************** *)
+(* Min and Max *)
+(* *********************************************************************** *)
+let min g =
+  Hashhe.fold
+    (fun v vertex_n res ->
+	if vertex_n.predhedge = Sette.empty
+	then Sette.add v res
+	else res)
+    g.vertex Sette.empty
+let max g =
+  Hashhe.fold
+    (fun v vertex_n res ->
+	if vertex_n.succhedge = Sette.empty
+	then Sette.add v res
+	else res)
+    g.vertex Sette.empty

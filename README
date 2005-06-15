@@ -1,0 +1,12 @@
+
+To compile the library:
+=======================
+make depend
+make all # for bytecode compilation
+make opt # for nativecode compilation
+
+To install the library:
+=======================
+set properly the PREFIX and LIBDIR variable in the Makefile
+make install
+
