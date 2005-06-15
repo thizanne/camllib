@@ -228,18 +228,43 @@ val reachable_filter_multi :
 (** {4 Strongly Connected Components and SubComponents} *)
 (*  ---------------------------------------------------------------------- *)
 
-val cfc :
-  ('a,'b,'c,'d,'e) t -> 'a -> 'a list list
+val cfc : ('a,'b,'c,'d,'e) t -> 'a -> 'a list list
+  (** Decomposition of the graph into Strongly Connected Components,
+
+    [cfc graph vertex] returns a decomposition of the graph.  The exploration
+    is done from the initial vertex [vertex], and only reachable vertices are
+    included in the result. The result has the structure [[comp1 comp2 comp3
+    ...]] where each component is defined by a list of vertices. The ordering
+    of component correspond to a linearization of the partial order between the
+    components.  *)
+
 val cfc_multi :
     'a -> 'b -> ('a,'b,'c,'d,'e) t -> 'a Sette.t -> 'a list list
+  (** idem, but from several initial vertices.
+
+    [cfc dummy_vertex dummy_hedge graph setvertices] returns a decomposition of
+    the graph, explored from the set of initial vertices
+    [setvertices]. [dummy_vertex] and [dummy_hedge] are resp. unused vertex and
+    hyperedge identifiers.
+  *)
+
 val cfc_filter_multi :
-    'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> bool) -> 'a Sette.t -> 'a list list
-val scfc :
-    ('a,'b,'c,'d,'e) t -> 'a -> 'a Ilist.t
+  'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> bool) -> 'a Sette.t -> 'a list list
+  (** idem, but with a filtering of dependencies *)
+
+val scfc : ('a,'b,'c,'d,'e) t -> 'a -> 'a Ilist.t
+  (** Decomposition of the graph into Strongly Connected Sub-Components,
+
+    [scfc graph vertex] returns a decomposition of the graph.  The exploration
+    is done from the initial vertex [vertex], and only reachable vertices are
+    included in the result. The result has the structure [[comp1 comp2 comp3
+    ...]] where each component is in turn decomposed into components.  *)
 val scfc_multi :
     'a -> 'b -> ('a,'b,'c,'d,'e) t -> 'a Sette.t -> 'a Ilist.t
+  (** idem, but from several initial vertices. *)
 val scfc_filter_multi :
     'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> bool) -> 'a Sette.t -> 'a Ilist.t
+  (** idem, but with a filtering of dependencies *)
 
 (*  ====================================================================== *)
 (** {3 Printing} *)
