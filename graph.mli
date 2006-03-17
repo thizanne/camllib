@@ -171,13 +171,12 @@ val fold_vertex : ('a, 'b, 'c) t -> 'd -> ('a -> 'b -> 'd -> 'd) -> 'd
 val fold_edge : ('a, 'b, 'c) t -> 'd -> ('a * 'a -> 'c -> 'd -> 'd) -> 'd
   (** Iteration with accumulation of a result on edges and their attributes *)
 
-module type Param = 
-sig
-    module MapV : Mappe.S
+module type Param = sig
+  module MapV : Mappe.S
 	(* Map module for associating attributes to vertices, of type [MapV.key] *)
-    module MapE : (Mappe.S with type key = MapV.key * MapV.key)
+  module MapE : (Mappe.S with type key = MapV.key * MapV.key)
 	(* Map module for associating attributes to edges, of type [MapV.key * MapV.key] *)
-  end
+end
 (** Input signature for the functor {!Graph.Make} *)
 
 module type S =

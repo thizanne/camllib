@@ -54,7 +54,7 @@ let bal l x d r =
 let rec add x data = function
     Emptyzz ->
       Nodezz(Emptyzz, x, data, Emptyzz, 1)
-  | Nodezz(l, v, d, r, h) as t ->
+  | Nodezz(l, v, d, r, h) ->
       let c = Pervasives.compare x v in
       if c = 0 then
             Nodezz(l, x, data, r, h)
@@ -136,7 +136,7 @@ let rec split key = function
 let rec remove x = function
     Emptyzz ->
       Emptyzz
-  | Nodezz(l, v, d, r, h) as t ->
+  | Nodezz(l, v, d, r, h) ->
       let c = Pervasives.compare x v in
       if c = 0 then
         merge l r
@@ -345,7 +345,7 @@ module Make(Setkey : Sette.S) = struct
   let rec add x data = function
     | Emptyzz ->
 	Nodezz(Emptyzz, x, data, Emptyzz, 1)
-    | Nodezz(l, v, d, r, h) as t ->
+    | Nodezz(l, v, d, r, h) ->
 	let c = Setkey.Ord.compare x v in
 	if c = 0 then
           Nodezz(l, x, data, r, h)
@@ -409,7 +409,7 @@ module Make(Setkey : Sette.S) = struct
   let rec remove x = function
     | Emptyzz ->
 	Emptyzz
-    | Nodezz(l, v, d, r, h) as t ->
+    | Nodezz(l, v, d, r, h) ->
 	let c = Setkey.Ord.compare x v in
 	if c = 0 then
           merge l r

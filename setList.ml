@@ -152,9 +152,44 @@ let rec for_all f = function
 (* version parametree *)
 
 (** Output signature of the functor {!SetList.Make} *)
-module type S = sig
-  include SetList.S
-end
+(** Output signature of the functor {!SetList.Make} *)
+module type S =
+  sig
+    type elt
+    type t
+    val print : 
+      ?first:(unit, Format.formatter, unit) format ->
+      ?sep:(unit, Format.formatter, unit) format ->
+      ?last:(unit, Format.formatter, unit) format ->
+      (Format.formatter -> elt -> unit) -> Format.formatter -> t -> unit
+    val empty : t
+    val is_empty : t -> bool
+    val mem : elt -> t -> bool
+    val add : elt -> t -> t
+    val of_list : elt list -> t
+    val to_list : t -> elt list
+    val singleton : elt -> t
+    val remove : elt -> t -> t
+    val union : t -> t -> t
+    val inter : t -> t -> t
+    val diff : t -> t -> t
+    val compare : t -> t -> int
+    val equal : t -> t -> bool
+    val subset : t -> t -> bool
+    val iter : (elt -> unit) -> t -> unit
+    val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
+    val fold_right : (elt -> 'a -> 'a) -> t -> 'a -> 'a
+    val fold_left : ('a -> elt -> 'a) -> 'a -> t -> 'a
+    val cardinal : t -> int
+    val elements : t -> elt list
+    val min_elt : t -> elt
+    val max_elt : t -> elt
+    val choose : t -> elt
+    val filter : (elt -> bool) -> t -> t
+    val partition : (elt -> bool) -> t -> (t * t)
+    val exists : (elt -> bool) -> t -> bool
+    val for_all : (elt -> bool) -> t -> bool
+  end
 
 (** Functor building an implementation of the SetList structure
    given a totally ordered type. *)

@@ -55,7 +55,7 @@ let rec union ta tb = match (ta,tb) with
     else xna::(union la tb)
 let rec inter ta tb = match (ta,tb) with
 | ([],_) | (_,[]) -> []
-| (((xa,na) as xna)::la,((xb,nb) as xnb)::lb) ->
+| ((xa,na)::la,(xb,nb)::lb) ->
     let drp = compare xa xb in
     if drp > 0 then inter ta lb
     else if drp = 0 then (xa,min na nb)::(inter la lb)
@@ -63,7 +63,7 @@ let rec inter ta tb = match (ta,tb) with
 let rec diff ta tb = match (ta,tb) with
 | ([],_) -> []
 | (_,[]) -> ta
-| (((xa,na) as xna)::la,((xb,nb) as xnb)::lb) ->
+| (((xa,na) as xna)::la,(xb,nb)::lb) ->
     let drp = compare xa xb in
     if drp > 0 then diff ta lb
     else if drp = 0 then 
@@ -104,12 +104,12 @@ let diff_set ta tb =
 let rec equal ta tb =  match (ta,tb) with
 | ([],[]) -> true
 | ([],_) | (_,[]) -> false
-| (((xa,na) as xna)::la,((xb,nb) as xnb)::lb) -> 
+| ((xa,na)::la,(xb,nb)::lb) -> 
     if compare xa xb = 0 && na = nb then equal la lb else false
 let rec subset ta tb =  match (ta,tb) with
 | ([],_) -> true
 | (_,[]) -> false
-| (((xa,na) as xna)::la,((xb,nb) as xnb)::lb) -> 
+| ((xa,na)::la,(xb,nb)::lb) -> 
     let drp = compare xa xb in
     if drp > 0 then subset ta lb
     else if drp = 0 && na <= nb then subset la lb
@@ -143,7 +143,7 @@ let mins = function
   | [] -> failwith "MultiSetList.mins: empty multiset"
   | (x,n) :: l -> 
       List.fold_left 
-	(fun ((set,mult) as res) ((x,n) as xn) -> 
+	(fun ((set,mult) as res) (x,n) -> 
 	  if n < mult then (SetList.singleton x,n)
 	  else if n = mult then (SetList.add x set, mult)
 	  else res)
@@ -152,7 +152,7 @@ let maxs = function
   | [] -> failwith "MultiSetList.maxs: empty multiset"
   | (x,n) :: l -> 
       List.fold_left 
-	(fun ((set,mult) as res) ((x,n) as xn) -> 
+	(fun ((set,mult) as res) (x,n) -> 
 	  if n > mult then (SetList.singleton x,n)
 	  else if n = mult then (SetList.add x set, mult)
 	  else res)
@@ -164,7 +164,7 @@ let compare =
   | ([],[]) -> 0
   | ([],_) -> -1
   | (_,[]) -> 1
-  | (((xa,na) as xna)::la,((xb,nb) as xnb)::lb) ->
+  | ((xa,na)::la,(xb,nb)::lb) ->
       let drp = compare xa xb in
       if drp = 0 then if na=nb then cmp la lb else na-nb
       else drp
@@ -181,8 +181,47 @@ let print
     formatter liste
 
 (** Output signature of the functor {!MultiSetList.Make} *)
-module type S = sig
-    include MultiSetList.S
+module type S = 
+  sig
+    type elt
+    type t
+    val empty: t
+    val is_empty: t -> bool
+    val mem: elt -> t -> bool
+    val mult: elt -> t -> int
+    val add: elt * int -> t -> t
+    val singleton: elt * int -> t
+    val remove: elt * int -> t -> t
+    val union: t -> t -> t
+    val inter: t -> t -> t
+    val diff: t -> t -> t
+    val union_set : t -> elt SetList.t -> t
+    val inter_set: t -> elt SetList.t -> t
+    val diff_set: t -> elt SetList.t -> t
+    val compare: t -> t -> int
+    val equal: t -> t -> bool
+    val subset: t -> t -> bool
+    val iter: ((elt * int) -> unit) -> t -> unit
+    val fold: ((elt * int) -> 'a -> 'a) -> t -> 'a -> 'a
+    val fold_right: ((elt * int) -> 'a -> 'a) -> t -> 'a -> 'a
+    val fold_left: ('a -> (elt * int) -> 'a) -> 'a -> t -> 'a
+    val cardinal: t -> int
+    val elements: t -> elt SetList.t
+    val min_elt: t -> elt
+    val max_elt: t -> elt
+    val min: t -> elt * int
+    val max: t -> elt * int
+    val mins: t -> elt SetList.t * int
+    val maxs: t -> elt SetList.t * int
+    val choose: t -> elt
+    val of_set: elt SetList.t -> t
+    val to_set: t -> elt SetList.t
+    val print: 
+      ?first:(unit, Format.formatter, unit) format ->
+      ?sep:(unit, Format.formatter, unit) format ->
+      ?last:(unit, Format.formatter, unit) format ->
+      (Format.formatter -> elt -> unit) -> Format.formatter -> t -> unit
+
 end
 
 (** Functor building an implementation of the MultiSetList structure
@@ -234,7 +273,7 @@ module Make(Ord: Set.OrderedType) = struct
       else xna::(union la tb)
   let rec inter ta tb = match (ta,tb) with
   | ([],_) | (_,[]) -> []
-  | (((xa,na) as xna)::la,((xb,nb) as xnb)::lb) ->
+  | ((xa,na)::la,(xb,nb)::lb) ->
       let drp = Ord.compare xa xb in
       if drp > 0 then inter ta lb
       else if drp = 0 then (xa,Pervasives.min na nb)::(inter la lb)
@@ -242,7 +281,7 @@ module Make(Ord: Set.OrderedType) = struct
   let rec diff ta tb = match (ta,tb) with
   | ([],_) -> []
   | (_,[]) -> ta
-  | (((xa,na) as xna)::la,((xb,nb) as xnb)::lb) ->
+  | (((xa,na) as xna)::la,(xb,nb)::lb) ->
       let drp = Ord.compare xa xb in
       if drp > 0 then diff ta lb
       else if drp = 0 then 
@@ -283,12 +322,12 @@ module Make(Ord: Set.OrderedType) = struct
   let rec equal ta tb =  match (ta,tb) with
   | ([],[]) -> true
   | ([],_) | (_,[]) -> false
-  | (((xa,na) as xna)::la,((xb,nb) as xnb)::lb) -> 
+  | ((xa,na)::la,(xb,nb)::lb) -> 
       if Ord.compare xa xb = 0 && na = nb then equal la lb else false
   let rec subset ta tb =  match (ta,tb) with
   | ([],_) -> true
   | (_,[]) -> false
-  | (((xa,na) as xna)::la,((xb,nb) as xnb)::lb) -> 
+  | ((xa,na)::la,(xb,nb)::lb) -> 
       let drp = Ord.compare xa xb in
       if drp > 0 then subset ta lb
       else if drp = 0 && na <= nb then subset la lb
@@ -311,7 +350,7 @@ module Make(Ord: Set.OrderedType) = struct
     | ([],[]) -> 0
     | ([],_) -> -1
     | (_,[]) -> 1
-    | (((xa,na) as xna)::la,((xb,nb) as xnb)::lb) ->
+    | ((xa,na)::la,(xb,nb)::lb) ->
 	let drp = Ord.compare xa xb in
 	if drp = 0 then if na=nb then cmp la lb else na-nb
 	else drp

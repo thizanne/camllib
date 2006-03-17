@@ -34,12 +34,39 @@ let print ?first ?sep ?last ?firstbind ?(sepbind=(" <=> ":(unit, Format.formatte
 
 (** Input signature of the functor {!DMappe.Make}. *)
 module type Param = sig
-  include DMappe.Param
+  module MappeX : Mappe.S
+  module MappeY : Mappe.S
 end
 
 (** Output signature of the functor {!DMappe.Make}. *)
 module type S = sig
-  include DMappe.S
+  module MappeX : Mappe.S
+  module MappeY : Mappe.S
+  type x = MappeX.key
+  type y = MappeY.key
+  type t
+  val empty : t
+  val add : x -> y -> t -> t
+  val y_of_x : x -> t -> y
+  val x_of_y : y -> t -> x
+  val remove : x -> t -> t 
+  val memx : x -> t -> bool
+  val memy : y -> t -> bool
+  val iter : (x -> y -> unit) -> t -> unit
+  val fold : (x -> y -> 'c -> 'c) -> t -> 'c -> 'c
+  val setx : t -> MappeX.Setkey.t
+  val sety : t -> MappeY.Setkey.t
+  val cardinal : t -> int
+  val print :
+    ?first:(unit, Format.formatter, unit) format ->
+    ?sep:(unit, Format.formatter, unit) format ->
+    ?last:(unit, Format.formatter, unit) format ->
+    ?firstbind:(unit, Format.formatter, unit) format ->
+    ?sepbind:(unit, Format.formatter, unit) format ->
+    ?lastbind:(unit, Format.formatter, unit) format ->
+    (Format.formatter -> x -> unit) ->
+    (Format.formatter -> y -> unit) -> 
+    Format.formatter -> t -> unit
 end
 
 (** Functor building an implementation of the DMappe structure

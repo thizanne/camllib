@@ -51,12 +51,41 @@ let print
 
 (** Input signature of the functor {!DHashhe.Make}. *)
 module type Param = sig
-  include DHashhe.Param
+  module HashX : Hashhe.S 
+    (** Hashtable for objects in the first place of bindings *)
+  module HashY : Hashhe.S 
+    (** Hashtable for objects in the second place of bindings *)
 end
 
 (** Output signature of the functor {!DHashhe.Make}. *)
 module type S = sig
-  include DHashhe.S
+  module HashX : Hashhe.S
+  module HashY : Hashhe.S
+  type x = HashX.key
+  type y = HashY.key
+  type t
+  val clear : t -> unit
+  val create : int -> t
+  val add : t -> x -> y -> unit
+  val y_of_x : t -> x -> y
+  val x_of_y : t -> y -> x
+  val removex : t -> x -> unit
+  val removey : t -> y -> unit
+  val memx : t -> x -> bool
+  val memy : t -> y -> bool
+  val iter : t -> (x -> y -> unit) -> unit
+  val fold : t -> 'a -> (x -> y -> 'a -> 'a) -> 'a
+  val cardinal : t -> int
+  val print :
+    ?first:(unit, Format.formatter, unit) format ->
+    ?sep:(unit, Format.formatter, unit) format ->
+    ?last:(unit, Format.formatter, unit) format ->
+    ?firstbind:(unit, Format.formatter, unit) format ->
+    ?sepbind:(unit, Format.formatter, unit) format ->
+    ?lastbind:(unit, Format.formatter, unit) format ->
+    (Format.formatter -> x -> unit) ->
+    (Format.formatter -> y -> unit) -> 
+    Format.formatter -> t -> unit
 end
 
 (** Functor building an implementation of the DHashtbl structure

@@ -3,7 +3,32 @@
 (** Two-way association table between identifiers and objects *)
 
 module type S = sig
-  include Dassoc.S
+  type obj
+    (** The type of objects *)
+  type 'a t
+    (** The type of two-way association table, with ['a] the type of identifiers. *)
+  val create : unit -> 'a t
+    (** Create a two-way association table.*)
+  val id_of_obj : 'a t -> obj -> 'a
+    (** Return the identifier corresponding to the object *)
+  val obj_of_id : 'a t -> 'a -> obj
+    (** Return the object corresponding to the identifier *)
+  val mem : 'a t -> 'a -> bool
+    (** Is the identifier registered in the table ? *)
+  val add : 'a t -> 'a -> obj -> unit
+    (** Add a new binding [(id,obj)]. *)
+  val remove : 'a t -> 'a -> unit
+    (** Remove the binding between the given identifier and its associated object. *)
+  val iter : ('a -> obj -> unit) -> 'a t -> unit
+    (** Iterate on bindings. *)
+  val fold : ('a -> obj -> 'b -> 'b) -> 'a t -> 'b -> 'b
+    (** Iterate on bindings and accumulating a result. *)
+  val set : 'a t -> 'a Sette.t
+    (** Return the set of identifiers *)
+  val map : 'a t -> ('a, obj) Mappe.t
+    (** Return a (single) association table from identifiers to objects *)
+  val clear : 'a t -> unit
+    (** Clear all bindings in the table. *)
 end
 
 module Make(Hash : Hashtbl.S) = struct

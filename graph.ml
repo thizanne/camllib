@@ -530,11 +530,83 @@ let map g fb fc = {
 (* ************************************************************************ *)
 
 module type Param = sig
-  include Graph.Param
+  module MapV : Mappe.S
+	(* Map module for associating attributes to vertices, of type [MapV.key] *)
+  module MapE : (Mappe.S with type key = MapV.key * MapV.key)
+	(* Map module for associating attributes to edges, of type [MapV.key * MapV.key] *)
 end
 
 module type S = sig
-  include Graph.S
+    type vertex
+	  (* The type of vertices *)
+    module SetV : (Sette.S with type elt=vertex)
+	(* The type of sets of vertices *)
+    module MapV : (Mappe.S with type key=vertex and module Setkey=SetV)
+	(* The Map for vertices *)
+    module MapE : (Mappe.S with type key=vertex*vertex)
+	(* The Map for edges *)
+	
+    type ('b,'c) t
+	  (* The type of graphs, where:
+	     - ['b] is the type of vertex attribute (etiq);
+	     - ['c] is the type of edge attributes (arete)
+	   *)
+
+    val succ : ('b, 'c) t -> vertex -> SetV.t
+    val pred : ('b, 'c) t -> vertex -> SetV.t
+    val etiq : ('b, 'c) t -> vertex -> 'b
+    val arete : ('b, 'c) t -> vertex * vertex -> 'c
+    val empty : ('b, 'c) t
+    val size : ('b, 'c) t -> int * int
+    val is_empty : ('b, 'c) t -> bool
+    val is_vertex : ('b, 'c) t -> vertex -> bool
+    val is_edge : ('b, 'c) t -> vertex * vertex -> bool
+    val vertices : ('b, 'c) t -> SetV.t
+    val edges : ('b, 'c) t -> MapE.Setkey.t
+    val add_edge : ('b, 'c) t -> vertex * vertex -> 'c -> ('b, 'c) t
+    val remove_edge : ('b, 'c) t -> vertex * vertex -> ('b, 'c) t
+    val add_vertex : ('b, 'c) t -> vertex -> 'b -> ('b, 'c) t
+    val remove_vertex : ('b, 'c) t -> vertex -> ('b, 'c) t
+    val duplicate_vertex : ('b, 'c) t -> vertex -> vertex -> 'b -> ('b, 'c) t
+    val transpose : ('b, 'c) t -> ('b, 'c) t
+    val topological_sort : ('b, 'c) t -> vertex -> vertex list
+    val topological_sort_multi : vertex -> ('b, 'c) t -> SetV.t -> vertex list
+    val accessible : ('b, 'c) t -> vertex -> SetV.t
+    val accessible_multi :
+	vertex -> ('b, 'c) t -> SetV.t -> SetV.t
+    val coaccessible : ('b, 'c) t -> vertex -> SetV.t
+    val coaccessible_multi :
+	vertex -> ('b, 'c) t -> SetV.t -> SetV.t
+    val cfc : ('b, 'c) t -> vertex -> vertex list list
+    val cfc_multi : vertex -> ('b, 'c) t -> SetV.t -> vertex list list
+    val cfc_filter_multi : vertex -> (vertex -> vertex -> bool) -> ('b, 'c) t -> SetV.t -> vertex list list
+    val scfc : ('b, 'c) t -> vertex -> vertex Ilist.t
+    val scfc_multi : vertex -> ('b, 'c) t -> SetV.t -> vertex Ilist.t
+    val scfc_filter_multi : vertex -> (vertex -> vertex -> bool) -> ('b, 'c) t -> SetV.t -> vertex Ilist.t
+    val min : ('b, 'c) t -> SetV.t
+    val max : ('b, 'c) t -> SetV.t
+    val print : (Format.formatter -> vertex -> unit) -> (Format.formatter -> 'b -> unit) -> (Format.formatter -> 'c -> unit) -> Format.formatter -> ('b,'c) t -> unit
+    val print_dot :
+      ?titlestyle:string ->
+      ?vertexstyle:string ->
+      ?edgestyle:string ->
+      ?title:string ->
+      (Format.formatter -> vertex -> unit) ->
+      (Format.formatter -> vertex -> 'b -> unit) ->
+      (Format.formatter -> vertex*vertex -> 'c -> unit) ->
+      Format.formatter -> ('b, 'c) t -> unit
+    val map_vertex : ('b, 'c) t -> (vertex -> 'b -> 'd) -> ('d, 'c) t
+    val map_edge : ('b, 'c) t -> (vertex * vertex -> 'c -> 'd) -> ('b, 'd) t
+    val map : 
+	('b,'c) t -> 
+	  (vertex -> 'b -> 'd) ->
+	    (vertex * vertex -> 'c -> 'e) ->
+	      ('d,'e) t
+		
+    val iter_vertex : ('b,'c) t -> (vertex -> 'b -> unit) -> unit
+    val iter_edge : ('b,'c) t -> ((vertex * vertex) -> 'c -> unit) -> unit
+    val fold_vertex : ('b, 'c) t -> 'd -> (vertex -> 'b -> 'd -> 'd) -> 'd
+    val fold_edge : ('b, 'c) t -> 'd -> (vertex * vertex -> 'c -> 'd -> 'd) -> 'd
 end
 
 module Make(P : Param) = struct

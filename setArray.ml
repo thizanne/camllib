@@ -1,8 +1,8 @@
 (*
- *      $Id: setArray.ml,v 1.3 2003/11/12 20:39:02 bjeannet Exp $
- *
- *      Ensembles implantes avec des tableaux tries
- *)
+  *      $Id: setArray.ml,v 1.3 2003/11/12 20:39:02 bjeannet Exp $
+  *
+  *      Ensembles implantes avec des tableaux tries
+*)
 
 (** Sets over totally ordered type with arrays *)
 
@@ -18,7 +18,7 @@ type rank =
 let rank elt set start =
   let size = Array.length set in
   let pos = ref start and
-      rank = ref (Old(-1)) in
+    rank = ref (Old(-1)) in
   begin
     try
       while !pos < size do
@@ -93,10 +93,10 @@ let union seta setb =
   else if setb=[||] then seta
   else begin
     let sa = Array.length seta and
-	sb = Array.length setb and
-	a = ref 0 and
-	b = ref 0 and
-	i = ref 0 
+      sb = Array.length setb and
+      a = ref 0 and
+      b = ref 0 and
+      i = ref 0 
     in
     let rset = Array.make (sa+sb) seta.(0) in
     while !a < sa && !b < sb do
@@ -122,10 +122,10 @@ let inter seta setb =
   if seta=[||] || setb=[||] then [||]
   else begin
     let sa = Array.length seta and
-	sb = Array.length setb and
-	a = ref 0 and
-	b = ref 0 and
-	i = ref 0 
+      sb = Array.length setb and
+      a = ref 0 and
+      b = ref 0 and
+      i = ref 0 
     in
     let rset = Array.make (min sa sb) seta.(0) in
     while !a < sa && !b < sb do
@@ -145,10 +145,10 @@ let diff seta setb =
   if seta=[||] || setb=[||] then seta
   else begin
     let sa = Array.length seta and
-	sb = Array.length setb and
-	a = ref 0 and
-	b = ref 0 and
-	i = ref 0 
+      sb = Array.length setb and
+      a = ref 0 and
+      b = ref 0 and
+      i = ref 0 
     in
     let rset = Array.copy seta in
     while !a < sa && !b < sb do
@@ -164,7 +164,7 @@ let diff seta setb =
   end
 let equal seta setb =
   let sa = Array.length seta and
-      sb = Array.length setb 
+    sb = Array.length setb 
   in
   if (sa<>sb) then
     false
@@ -178,28 +178,28 @@ let equal seta setb =
       false
   end
 let subset seta setb =
- let sa = Array.length seta and
-     sb = Array.length setb 
- in
- if (sa>sb) then 
-   false
- else if (sa=sb) then
-   equal seta setb
- else begin  
-   try
-     let a = ref 0 and
-	 b = ref 0 
-     in
-     while !a < sa && !b < sb do
-       let drp = compare seta.(!a) setb.(!b) in
-       if drp<0 then raise Exit
-       else if drp=0 then begin incr a; incr b end
-       else (* drp>0 *) incr b;
-     done;
-     (!a = sa)
-   with Exit ->
-     false
- end
+  let sa = Array.length seta and
+    sb = Array.length setb 
+  in
+  if (sa>sb) then 
+    false
+  else if (sa=sb) then
+    equal seta setb
+  else begin  
+    try
+      let a = ref 0 and
+	b = ref 0 
+      in
+      while !a < sa && !b < sb do
+	let drp = compare seta.(!a) setb.(!b) in
+	if drp<0 then raise Exit
+	else if drp=0 then begin incr a; incr b end
+	else (* drp>0 *) incr b;
+      done;
+      (!a = sa)
+    with Exit ->
+      false
+  end
 let iter = Array.iter
 let fold =Array.fold_left
 let fold_right = Array.fold_right
@@ -218,23 +218,23 @@ let max_elt set =
     set.((Array.length set) - 1)
 let choose = min_elt
 let compare seta setb =
- let sa = Array.length seta and
-     sb = Array.length setb 
- in
- let s = min sa sb in
- let res = ref 0 in
- begin try
-   for i=0 to s do
-     let drp = compare seta.(i) setb.(i) in
-     if drp <> 0 then begin res := drp; raise Exit end
-   done;
-   res := compare sa sb
- with Exit -> ()
- end;
- !res
+  let sa = Array.length seta and
+    sb = Array.length setb 
+  in
+  let s = min sa sb in
+  let res = ref 0 in
+  begin try
+    for i=0 to s do
+      let drp = compare seta.(i) setb.(i) in
+      if drp <> 0 then begin res := drp; raise Exit end
+    done;
+    res := compare sa sb
+  with Exit -> ()
+  end;
+  !res
 let filter f set =
   let size = Array.length set and
-      rset = Array.copy set 
+    rset = Array.copy set 
   in
   let r = ref 0 in
   for s=0 to size-1 do
@@ -250,25 +250,54 @@ let partition f set =
     let size = Array.length set in
     let rset = Array.make (2*size) set.(0) in
     let a = ref 0 and
-	b = ref size 
+      b = ref size 
     in
     for s=0 to size-1 do
-    if f set.(s) then begin 
-      rset.(!a) <- set.(s); incr a
-    end else begin
-      rset.(!b) <- set.(s); incr b
-    end
+      if f set.(s) then begin 
+	rset.(!a) <- set.(s); incr a
+      end else begin
+	rset.(!b) <- set.(s); incr b
+      end
     done;
-  if !a = 0 then ([||],set)
-  else if !a=size then (set,[||])
-  else (Array.sub rset 0 !a, Array.sub rset size !b)
+    if !a = 0 then ([||],set)
+    else if !a=size then (set,[||])
+    else (Array.sub rset 0 !a, Array.sub rset size !b)
   end    
 
 (* version parametree *)
 
 (** Output signature of the functor {!SetArray.Make} *)
 module type S = sig
-  include SetArray.S
+  type elt
+  type t
+  val print : (Format.formatter -> elt -> unit) -> Format.formatter -> t -> unit
+  val empty : t
+  val is_empty : t -> bool
+  val mem : elt -> t -> bool
+  val add : elt -> t -> t
+  val of_list : elt list -> t
+  val to_list : t -> elt list
+  val of_array : elt array -> t
+  val to_array : t -> elt array
+  val singleton : elt -> t
+  val remove : elt -> t -> t
+  val union : t -> t -> t
+  val inter : t -> t -> t
+  val diff : t -> t -> t
+  val compare : t -> t -> int
+  val equal : t -> t -> bool
+  val subset : t -> t -> bool
+  val iter : (elt -> unit) -> t -> unit
+  val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
+  val fold_right : (elt -> 'a -> 'a) -> t -> 'a -> 'a
+  val fold_left : ('a -> elt -> 'a) -> 'a -> t -> 'a
+  val cardinal : t -> int
+  val elements : t -> elt list
+  val min_elt : t -> elt
+  val max_elt : t -> elt
+  val choose : t -> elt
+  val filter : (elt -> bool) -> t -> t
+  val partition : (elt -> bool) -> t -> (t * t)
 end
 
 (** Functor building an implementation of the SetArray structure

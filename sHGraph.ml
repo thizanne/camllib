@@ -730,11 +730,176 @@ let print_dot
   ()
 
 module type T = sig
-  include SHGraph.T
+  type vertex
+    (** Type of vertex identifiers *)
+  type hedge
+    (** Type of hyperedge identifiers *)
+  val vertex_dummy : vertex
+    (** A dummy (never used) value for vertex identifiers (used for the
+      functions [XXX_multi]) *)
+  val hedge_dummy : hedge
+    (** A dummy (never used) value for hyperedge identifiers (used for
+      the functions [XXX_multi]) *)
+  module SetV : (Sette.S with type elt=vertex)
+    (** Set module for vertices *)
+  module SetH : (Sette.S with type elt=hedge)
+    (** Set module for hyperedges *)
+  module HashV : (Hashhe.S with type key=vertex)
+    (** Hash module with vertices as keys *)
+  module HashH : (Hashhe.S with type key=hedge)
+    (** Hash module with hyperedges as keys *)
 end
 
 module type S = sig
-  include SHGraph.S
+  type vertex
+  type hedge
+
+  module SetV : (Sette.S with type elt=vertex)
+  module SetH : (Sette.S with type elt=hedge)
+
+  type ('a,'b,'c) t
+    (** Type of hypergraphs, where {ul
+    {- 'a : information associated to vertices}
+    {- 'b : information associated to hedges}
+    {- 'c : user-information associated to an hypergraph}
+    }
+    *)
+  val create : int -> 'c -> ('a,'b,'c) t
+  val clear : ('a,'b,'c) t -> unit
+  val is_empty : ('a,'b,'c) t -> bool
+
+  (** {3 Statistics} *)
+
+  val size_vertex : ('a,'b,'c) t -> int
+  val size_hedge : ('a,'b,'c) t -> int
+  val size_edgevh : ('a,'b,'c) t -> int
+  val size_edgehv : ('a,'b,'c) t -> int
+  val size : ('a,'b,'c) t -> int * int * int * int
+
+  (** {3 Information associated to vertives and edges} *)
+
+  val attrvertex : ('a,'b,'c) t -> vertex -> 'a
+  val attrhedge : ('a,'b,'c) t -> hedge -> 'b
+  val info : ('a,'b,'c) t -> 'c
+
+  (** {3 Membership tests} *)
+
+  val is_vertex : ('a,'b,'c) t -> vertex -> bool
+  val is_hedge : ('a,'b,'c) t -> hedge -> bool
+
+  (** {3 Successors and predecessors} *)
+
+  val succhedge : ('a,'b,'c) t -> vertex -> SetH.t
+  val predhedge : ('a,'b,'c) t -> vertex -> SetH.t
+  val succvertex : ('a,'b,'c) t -> hedge -> vertex array
+  val predvertex : ('a,'b,'c) t -> hedge -> vertex array
+  val succ_vertex : ('a,'b,'c) t -> vertex -> SetV.t
+  val pred_vertex : ('a,'b,'c) t -> vertex -> SetV.t
+
+  (** {3 Adding and removing elements} *)
+
+  val add_vertex : ('a,'b,'c) t -> vertex -> 'a -> unit
+  val add_hedge : ('a,'b,'c) t -> hedge -> 'b -> pred:vertex array -> succ:vertex array -> unit
+
+  val remove_vertex : ('a,'b,'c) t -> vertex -> unit
+  val remove_hedge : ('a,'b,'c) t -> hedge -> unit
+
+  (** {3 Iterators} *)
+
+  val iter_vertex :
+    ('a,'b,'c) t -> 
+    (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> unit) -> 
+    unit
+  val iter_hedge :
+    ('a,'b,'c) t -> 
+    (hedge -> 'b -> pred:vertex array -> succ:vertex array -> unit) -> 
+    unit
+  val fold_vertex :
+    ('a,'b,'c) t -> 
+    (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> 'g -> 'g) ->
+    'g -> 'g
+  val fold_hedge :
+    ('a,'b,'c) t ->
+    (hedge -> 'b -> pred:vertex array -> succ:vertex array -> 'g -> 'g) ->
+    'g -> 'g
+
+  val map :
+    ('a,'b,'c) t ->
+    (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> 'aa) -> 
+    (hedge -> 'b -> pred:vertex array -> succ:vertex array -> 'bb) -> 
+    ('c -> 'cc) ->
+    ('a,'b,'c) t ->
+    ('aa,'bb,'cc) t
+
+  (** {3 Copy and Transpose} *)
+
+  val copy :
+    (vertex -> 'a -> 'aa) ->
+    (hedge -> 'b -> 'bb) ->
+    ('c -> 'cc) ->
+    ('a,'b,'c) t ->
+    ('aa,'bb,'cc) t
+  val transpose :
+    (vertex -> 'a -> 'aa) ->
+    (hedge -> 'b -> 'bb) ->
+    ('c -> 'cc) ->
+    ('a,'b,'c) t ->
+    ('aa,'bb,'cc) t
+
+  (** {3 Algorithms} *)
+
+  val min : ('a,'b,'c) t -> SetV.t
+  val max : ('a,'b,'c) t -> SetV.t
+
+  val topological_sort :
+    ('a,'b,'c) t -> vertex -> vertex list
+  val topological_sort_multi :
+    ('a,'b,'c) t -> SetV.t -> vertex list
+  val topological_sort_filter_multi :
+    ('a,'b,'c) t -> (hedge -> bool) -> SetV.t -> vertex list
+
+  val reachable :
+    ('a,'b,'c) t -> vertex -> SetV.t * SetH.t
+  val reachable_multi :
+    ('a,'b,'c) t -> SetV.t -> SetV.t * SetH.t
+  val reachable_filter_multi :
+    ('a,'b,'c) t -> (hedge -> bool) -> SetV.t -> SetV.t * SetH.t
+
+  val cfc :
+    ('a,'b,'c) t -> vertex -> vertex list list
+  val cfc_multi :
+    ('a,'b,'c) t -> SetV.t -> vertex list list
+  val cfc_filter_multi :
+    ('a,'b,'c) t -> (hedge -> bool) -> SetV.t -> vertex list list
+
+  val scfc :
+    ('a,'b,'c) t -> vertex -> vertex Ilist.t
+  val scfc_multi :
+    ('a,'b,'c) t -> SetV.t -> vertex Ilist.t
+  val scfc_filter_multi :
+    ('a,'b,'c) t -> (hedge -> bool) -> SetV.t -> vertex Ilist.t
+
+  (** {3 Printing} *)
+
+  val print :
+    (Format.formatter -> vertex -> unit) ->
+    (Format.formatter -> hedge -> unit) ->
+    (Format.formatter -> 'a -> unit) ->
+    (Format.formatter -> 'b -> unit) ->
+    (Format.formatter -> 'c -> unit) ->
+    Format.formatter -> ('a,'b,'c) t -> unit
+
+  val print_dot :
+    ?titlestyle:string ->
+    ?vertexstyle:string ->
+    ?hedgestyle:string ->
+    ?title:string ->
+    (Format.formatter -> vertex -> unit) ->
+    (Format.formatter -> hedge -> unit) ->
+    (Format.formatter -> vertex -> 'a -> unit) ->
+    (Format.formatter -> hedge -> 'b -> unit) ->
+    Format.formatter -> ('a,'b,'c) t -> unit
+
 end
 
 module Make(T : T) : (S with type vertex=T.vertex

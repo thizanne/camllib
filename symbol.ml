@@ -23,6 +23,9 @@ module Hash = Hashtbl.Make(HashedType)
 module Set = Sette.Make(OrderedType)
 module Map = Mappe.Make(Set)
 
+let equal = (==)
+let compare = (-)
+
 let tbl_string_symbol = Hashtbl.create 101
   (* Association string -> symbol *)
 

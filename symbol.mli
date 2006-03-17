@@ -22,6 +22,11 @@ val to_string: t -> string
   (** Returns the string represented by the symbol. *)
 val print: Format.formatter -> t -> unit
   (** Prints the symbol (its associated string). *)
+val equal: t -> t -> bool
+  (** Equality test *)
+val compare: t -> t -> int
+  (** Comparison (do not correspond at all to alphabetic order, depend on the
+    registration order of names in the module) *)
 
 module HashedType: (Hashtbl.HashedType with type t=t)
   (** To use hashtables on type [t] *)
