@@ -2,8 +2,12 @@
 
 (** Two-way hashtable between two data types *)
 
-type ('a, 'b) t
-  (** The type of two-way hashtables *)
+type ('a, 'b) t =
+  {
+    xy : ('a,'b) Hashhe.t;
+    yx : ('b,'a) Hashhe.t
+  }
+  (** The type of two-way hashtables, meant to be abstract *)
 
 val clear : ('a,'b) t -> unit
   (** Clear a table *)

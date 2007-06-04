@@ -22,7 +22,7 @@ let list
     let rec do_sep = function
       [e] -> print_elt fmt e
       | e::l -> (print_elt fmt e ; fprintf fmt sep; do_sep l)
-    | [] -> failwith "matrix.nw: pretty_list"
+    | [] -> failwith ""
     in
     do_sep list;
     fprintf fmt last;

@@ -144,7 +144,7 @@ val print_dot :
     (Format.formatter -> 'a -> 'b -> unit) ->
     (Format.formatter -> ('a * 'a) -> 'c -> unit) ->
     Format.formatter -> ('a, 'b, 'c) t -> unit
-  (** Prints the graph to DOT format. *)
+  (** Prints the graph to DOT format. See {!SHGraph.print_dot} for details. *)
 
 val map_vertex : ('a, 'b, 'c) t -> ('a -> 'b -> 'd) -> ('a, 'd, 'c) t
   (** Map function on vertices and their attributes.

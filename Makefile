@@ -19,7 +19,7 @@ FILES = print sette mappe hashhe \
 	dassoc dMappe dHashhe statistic time rational \
 	hashheI hashheII hashheIB \
 	hashI hashII hashIB \
-	setteI setteII mappeI mappeII \
+	setteI setteII setteS mappeI mappeII \
 	dHashtbl \
 	dMappeI dMappeIS graphI 
 
@@ -61,17 +61,17 @@ tar: $(SRC) Makefile camllib.tex README
 
 camllib.dvi: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
 	ocamldoc.opt -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -latex -o ocamldoc.tex $(FILES:%=%.mli) $(FILES:%=%.ml)
-	hugelatex camllib
+	latex camllib
 	makeindex camllib
-	hugelatex camllib
-	hugelatex camllib
+	latex camllib
+	latex camllib
 
 camllibcode.dvi: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
 	ocamldoc.opt -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -inv-merge-ml-mli -keep-code -latex -o ocamldoc.tex $(FILES:%=%.mli)  $(FILES:%=%.ml)
-	hugelatex camllib
+	latex camllib
 	makeindex camllib
-	hugelatex camllib
-	hugelatex camllib
+	latex camllib
+	latex camllib
 
 html: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
 	$(OCAMLDOC) -html -keep-code $(FILES:%=%.ml) $(FILES:%=%.mli)

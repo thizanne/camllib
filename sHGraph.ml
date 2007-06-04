@@ -1,4 +1,10 @@
+(* % $Id$ *)
+
+(* % Bertrand Jeannet. This file is released under LGPL license. *)
+
 (* \chapter{SHGraph: kind of hypergraphs} *)
+
+(* This file is released under LGPL license. *)
 
 (* We implement here oriented hypergraphs, the edges of which has a
    single origin vertex and are called nails. The implementation is
@@ -10,6 +16,13 @@ let array_forall f tab =
   let res = ref true in
   for i=0 to pred (Array.length tab) do
     res := !res && f tab.(i)
+  done;
+  !res
+
+let array_exists f tab =
+  let res = ref false in
+  for i=0 to pred (Array.length tab) do
+    res := !res || f tab.(i)
   done;
   !res
 
@@ -184,7 +197,7 @@ let fold_hedge g f res =
 
 let map g map_attrvertex map_attrhedge map_info = {
   vertex = begin
-    Hashhe.map 
+    Hashhe.map
       (fun v vertex_n -> {
 	attrvertex = map_attrvertex v vertex_n.attrvertex ~pred:vertex_n.predhedge ~succ:vertex_n.succhedge;
 	predhedge = vertex_n.predhedge;
@@ -201,7 +214,7 @@ let map g map_attrvertex map_attrhedge map_info = {
       })
       g.hedge
   end;
-  info = map_info g.info 
+  info = map_info g.info
 }
 
 (* *********************************************************************** *)
@@ -236,7 +249,7 @@ let pred_vertex g v =
 
 let copy copy_attrvertex copy_attrhedge copy_info g = {
   vertex = begin
-    Hashhe.map 
+    Hashhe.map
       (fun v vertex_n -> {
 	attrvertex = copy_attrvertex v vertex_n.attrvertex;
 	predhedge = vertex_n.predhedge;
@@ -253,12 +266,12 @@ let copy copy_attrvertex copy_attrhedge copy_info g = {
       })
       g.hedge
   end;
-  info = copy_info g.info 
+  info = copy_info g.info
 }
 
 let transpose copy_attrvertex copy_attrhedge copy_info g = {
   vertex = begin
-    Hashhe.map 
+    Hashhe.map
       (fun v vertex_n -> {
 	attrvertex = copy_attrvertex v vertex_n.attrvertex;
 	predhedge = vertex_n.succhedge;
@@ -275,7 +288,7 @@ let transpose copy_attrvertex copy_attrhedge copy_info g = {
       })
       g.hedge
   end;
-  info = copy_info g.info 
+  info = copy_info g.info
 }
 
 (* *********************************************************************** *)
@@ -462,7 +475,7 @@ let cfc_aux
 	  if filter h then begin
 	    let hedge_n = hedge_n g h in
 	    let cond =
-	      array_forall
+	      array_exists
 		(fun v -> Hashhe.find hash v > min_int)
 		hedge_n.predvertex
 	    in
@@ -545,7 +558,7 @@ let scfc_aux
 	if filter h then begin
 	  let hedge_n = hedge_n g h in
 	  let cond =
-	    array_forall
+	    array_exists
 	      (fun v -> Hashhe.find hash v > min_int)
 	      hedge_n.predvertex
 	  in
@@ -668,7 +681,7 @@ let print
   in
 
   (* Build the set of vertices and hedges and sort it *)
-  fprintf formatter "[@[<v>@ ";
+  fprintf formatter "[ @[<v>";
   let vertices =
     Hashhe.fold (fun v _ res -> Sette.add v res) g.vertex Sette.empty
   in
@@ -677,9 +690,9 @@ let print
     Hashhe.fold (fun n _ res -> Sette.add n res) g.hedge Sette.empty
   in
   Sette.iter printh hedges;
-  fprintf formatter "info = %a@ " print_info g.info;
+  fprintf formatter "info = %a" print_info g.info;
 
-  fprintf formatter "@ ]@]";
+  fprintf formatter " ]@]";
   ()
 
 let print_dot
@@ -728,6 +741,51 @@ let print_dot
   ;
   fprintf fmt "@]@.}@.";
   ()
+
+external is_printable: char -> bool = "caml_is_printable"
+external char_code: char -> int = "%identity"
+external char_chr: int -> char = "%identity"
+
+let escaped ?(linebreak:char='\n') s =
+  let n = ref 0 in
+  for i = 0 to String.length s - 1 do
+    n := !n +
+    (match String.unsafe_get s i with
+    '"' | '\\' | '\n' | '\t' -> 2
+    | c -> if is_printable c then 1 else 4)
+  done;
+  if !n = String.length s then s else begin
+    let s' = String.create !n in
+    n := 0;
+    for i = 0 to String.length s - 1 do
+      begin
+	match String.unsafe_get s i with
+	('"' | '\\') as c ->
+	  String.unsafe_set s' !n '\\'; incr n; String.unsafe_set s' !n c
+	| '\n' ->
+	    String.unsafe_set s' !n '\\'; incr n; String.unsafe_set s' !n linebreak
+	| '\t' ->
+	    String.unsafe_set s' !n '\\'; incr n; String.unsafe_set s' !n 't'
+	| c ->
+	    if is_printable c then
+	      String.unsafe_set s' !n c
+	    else begin
+	      let a = char_code c in
+	      String.unsafe_set s' !n '\\';
+	      incr n;
+	      String.unsafe_set s' !n (char_chr (48 + a / 100));
+	      incr n;
+	      String.unsafe_set s' !n (char_chr (48 + (a / 10) mod 10));
+	      incr n;
+	      String.unsafe_set s' !n (char_chr (48 + a mod 10))
+	    end
+      end;
+      incr n
+    done;
+    s'
+  end
+
+
 
 module type T = sig
   type vertex
@@ -807,15 +865,15 @@ module type S = sig
   (** {3 Iterators} *)
 
   val iter_vertex :
-    ('a,'b,'c) t -> 
-    (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> unit) -> 
+    ('a,'b,'c) t ->
+    (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> unit) ->
     unit
   val iter_hedge :
-    ('a,'b,'c) t -> 
-    (hedge -> 'b -> pred:vertex array -> succ:vertex array -> unit) -> 
+    ('a,'b,'c) t ->
+    (hedge -> 'b -> pred:vertex array -> succ:vertex array -> unit) ->
     unit
   val fold_vertex :
-    ('a,'b,'c) t -> 
+    ('a,'b,'c) t ->
     (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> 'g -> 'g) ->
     'g -> 'g
   val fold_hedge :
@@ -825,8 +883,8 @@ module type S = sig
 
   val map :
     ('a,'b,'c) t ->
-    (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> 'aa) -> 
-    (hedge -> 'b -> pred:vertex array -> succ:vertex array -> 'bb) -> 
+    (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> 'aa) ->
+    (hedge -> 'b -> pred:vertex array -> succ:vertex array -> 'bb) ->
     ('c -> 'cc) ->
     ('a,'b,'c) t ->
     ('aa,'bb,'cc) t
@@ -1126,7 +1184,7 @@ module Make(T : T) : (S with type vertex=T.vertex
       predhedge=SetH.empty };
     HashH.add g.hedge T.hedge_dummy
       { attrhedge=Obj.magic 0;
-        succvertex=begin
+	succvertex=begin
 	  let tab = Array.make (SetV.cardinal root) (SetV.choose root) in
 	  let i = ref 0 in
 	  SetV.iter (fun v -> tab.(!i) <- v; incr i) root;
@@ -1185,13 +1243,13 @@ module Make(T : T) : (S with type vertex=T.vertex
 
   let topological_sort g root =
     topological_sort_aux g root
-      
+
   let topological_sort_multi g root =
     add_dummy_forward g root;
     let res = topological_sort g T.vertex_dummy in
     rem_dummy g;
     List.tl res
-      
+
   let topological_sort_filter_multi g filter root =
     add_dummy_forward g root;
     let res =
@@ -1201,7 +1259,7 @@ module Make(T : T) : (S with type vertex=T.vertex
     in
     rem_dummy g;
     List.tl res
-      
+
   (* *********************************************************************** *)
   (* Reachability/Coreachability *)
   (* *********************************************************************** *)
@@ -1257,7 +1315,7 @@ module Make(T : T) : (S with type vertex=T.vertex
 
   let reachable g root =
     reachable_aux g root
-      
+
   let reachable_multi g root =
     add_dummy_forward g root;
     let res = reachable g T.vertex_dummy in
@@ -1461,7 +1519,7 @@ module Make(T : T) : (S with type vertex=T.vertex
 
   let scfc g root =
     scfc_aux g root
-      
+
   let scfc_multi g root =
     add_dummy_forward g root;
     let res = scfc g T.vertex_dummy in
@@ -1527,7 +1585,7 @@ module Make(T : T) : (S with type vertex=T.vertex
     in
 
     (* Build the set of vertices and hedges and sort it *)
-    fprintf formatter "[@[<v>@ ";
+    fprintf formatter "[ @[<v>";
     let vertices =
       HashV.fold (fun v _ res -> SetV.add v res) g.vertex SetV.empty
     in
@@ -1537,7 +1595,7 @@ module Make(T : T) : (S with type vertex=T.vertex
     in
     SetH.iter printn hedges;
     fprintf formatter "info = %a" print_info g.info;
-    fprintf formatter "@ ]@]";
+    fprintf formatter " ]@]";
     ()
 
   let print_dot

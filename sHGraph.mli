@@ -1,3 +1,7 @@
+(* $Id$ *)
+
+(* Bertrand Jeannet. This file is released under LGPL license. *)
+
 (** Oriented hypergraphs *)
 
 (** {2 Introduction}
@@ -109,21 +113,21 @@ val remove_vertex : ('a,'b,'c,'d,'e) t -> 'a -> unit
   (** Remove the vertex from the graph, as well as all related hyperedges. *)
 val remove_hedge : ('a,'b,'c,'d,'e) t -> 'b -> unit
   (** Remove the hyperedge from the graph. *)
-  
+
 (*  ====================================================================== *)
 (** {3 Iterators} *)
 (*  ====================================================================== *)
 
 val iter_vertex :
-  ('a,'b,'c,'d,'e) t -> 
-  ('a -> 'c -> pred:'b Sette.t -> succ:'b Sette.t -> unit) -> 
+  ('a,'b,'c,'d,'e) t ->
+  ('a -> 'c -> pred:'b Sette.t -> succ:'b Sette.t -> unit) ->
   unit
   (** Iterates the function [f vertex attrvertex succhedges predhedges] to all
     vertices of the graph.  [succhedges] (resp. [predhedges]) is the set of
     successor (resp. predecessor) hyperedges of the vertex *)
 val iter_hedge :
-  ('a,'b,'c,'d,'e) t -> 
-  ('b -> 'd -> pred:'a array -> succ:'a array -> unit) -> 
+  ('a,'b,'c,'d,'e) t ->
+  ('b -> 'd -> pred:'a array -> succ:'a array -> unit) ->
   unit
   (** Iterates the function [f hedge attrhedge succvertices predvertices] to
     all hyperedges of the graph.  [succvertices] (resp. [predvertices]) is the
@@ -132,8 +136,8 @@ val iter_hedge :
 (** Below are the [fold] versions of the previous functions. *)
 
 val fold_vertex :
-  ('a,'b,'c,'d,'e) t -> 
-  ('a -> 'c -> pred:'b Sette.t -> succ:'b Sette.t -> 'h -> 'h) -> 
+  ('a,'b,'c,'d,'e) t ->
+  ('a -> 'c -> pred:'b Sette.t -> succ:'b Sette.t -> 'h -> 'h) ->
   'h -> 'h
 val fold_hedge :
   ('a,'b,'c,'d,'e) t ->
@@ -144,8 +148,8 @@ val fold_hedge :
 
 val map :
   ('a,'b,'c,'d,'e) t ->
-  ('a -> 'c -> pred:'b Sette.t -> succ:'b Sette.t -> 'cc) -> 
-  ('b -> 'd -> pred:'a array -> succ:'a array -> 'dd) -> 
+  ('a -> 'c -> pred:'b Sette.t -> succ:'b Sette.t -> 'cc) ->
+  ('b -> 'd -> pred:'a array -> succ:'a array -> 'dd) ->
   ('e -> 'ee) ->
   ('a,'b,'cc,'dd,'ee) t
 
@@ -277,6 +281,10 @@ val print :
   (Format.formatter -> 'd -> unit) ->
   (Format.formatter -> 'e -> unit) ->
   Format.formatter -> ('a,'b,'c,'d,'e) t -> unit
+  (** Print a graph in textual format on the given formatter, using the given
+    functions to resp.  print: vertices (['a]), hedges (['b]), vertex
+    attributes (['c]), hedge attributes (['d]), and the user information
+    (['e]). *)
 
 val print_dot :
   ?titlestyle:string ->
@@ -288,6 +296,45 @@ val print_dot :
   (Format.formatter -> 'a -> 'c -> unit) ->
   (Format.formatter -> 'b -> 'd -> unit) ->
   Format.formatter -> ('a,'b,'c,'d,'e) t -> unit
+  (** Output the graph in DOT format on the given formatter, using the given
+    functions to resp print:
+
+    {ul {li vertex identifiers (in the DOT file)} {li hedge identifiers (in the
+    DOT file).
+
+      BE CAUTIOUS. as the DOT files vertices and hedges are actually nodes, the
+      user should take care to avoid name conflicts between vertex and hedge
+      names.}  {li vertex attributes.
+
+      BE CAUTIOUS: the output of the function will be enclosed bewteen
+      quotes. If ever the output contains line break, or other special
+      characters, it should be escaped. A possible scheme to do this is to
+      first output to [Format.str_formatter] with a standard printing function,
+      then to escape the resulting string and to output the result.  This gives
+      something like:
+
+      [print_attrvertex Format.str_formatter vertex attr;]
+
+      [Format.pp_print_string fmt (String.escaped (Format.flush_str_formatter ()));].
+
+      Concerning the escape function, you may use [String.escaped], which will
+      produce center justified line breaks, or the provided [escaped] (see
+      below) which allows also to choose between center, left and right
+      justified lines.}  {li hedge atributes (same comment as for vertex
+      attributes).}}
+
+    The optional arguments allows to customize the style. The default setting
+    corresponds to:
+
+    [print_dot ~titlestyle="shape=ellipse,style=bold,style=filled,fontsize=20"
+~vertexstyle="shape=box,fontsize=12" ~hedgestyle="shape=ellipse,fontsize=12"
+~title="" ...].
+  *)
+
+val escaped: ?linebreak:char -> string -> string
+  (** Escape a string, replacing line breaks by [linebreak] (default
+    ['\n']). When used for DOT output, ['\l'] and ['\r'] produces respectively
+    left or righjt justified lines, instead of center justified lines. *)
 
 (*  ********************************************************************** *)
 (** {2 Parameter module for the functor version} *)
@@ -379,15 +426,15 @@ module type S = sig
   (** {3 Iterators} *)
 
   val iter_vertex :
-    ('a,'b,'c) t -> 
-    (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> unit) -> 
+    ('a,'b,'c) t ->
+    (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> unit) ->
     unit
   val iter_hedge :
-    ('a,'b,'c) t -> 
-    (hedge -> 'b -> pred:vertex array -> succ:vertex array -> unit) -> 
+    ('a,'b,'c) t ->
+    (hedge -> 'b -> pred:vertex array -> succ:vertex array -> unit) ->
     unit
   val fold_vertex :
-    ('a,'b,'c) t -> 
+    ('a,'b,'c) t ->
     (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> 'g -> 'g) ->
     'g -> 'g
   val fold_hedge :
@@ -397,8 +444,8 @@ module type S = sig
 
   val map :
     ('a,'b,'c) t ->
-    (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> 'aa) -> 
-    (hedge -> 'b -> pred:vertex array -> succ:vertex array -> 'bb) -> 
+    (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> 'aa) ->
+    (hedge -> 'b -> pred:vertex array -> succ:vertex array -> 'bb) ->
     ('c -> 'cc) ->
     ('a,'b,'c) t ->
     ('aa,'bb,'cc) t

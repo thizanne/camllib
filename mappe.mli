@@ -76,7 +76,7 @@ val maptoset: ('a,'b) t -> 'a Sette.t
 val mapofset: ('a -> 'b) -> 'a Sette.t -> ('a,'b) t
         (** [mapofset f s] returns the map associating [f key] to
 	   [key], for each element [key] of the set [s] *)
-val compare: ('a,'b) t -> ('a,'b) t -> int
+val compare: ?compare:('b -> 'b -> int) -> ('a,'b) t -> ('a,'b) t -> int
         (** Comparison function between maps *)
 val filter: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t
         (** [filter p m] returns the map of all bindings in [m] that satisfy
@@ -124,7 +124,7 @@ module type S = sig
   val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
   val maptoset : 'a t -> Setkey.t
   val mapofset: (key -> 'a) -> Setkey.t -> 'a t
-  val compare : 'a t -> 'a t -> int
+  val compare : ?compare:('a -> 'a -> int) -> 'a t -> 'a t -> int
   val filter: (key -> 'a -> bool) -> 'a t -> 'a t
   val partition: (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
   val cardinal : 'a t -> int

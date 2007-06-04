@@ -1,39 +1,6 @@
-(*
-        ilist.ml
+(* $Id$ *)
 
-	listes imbriquees
-*)
-
-(* 
- *      $Log: ilist.ml,v $
- *      Revision 1.5  2005/06/14 14:23:06  bjeannet
- *      of_list and flatten functions added.
- *
- *      Revision 1.4  2003/11/12 20:39:02  bjeannet
- *      OK for ocamldoc.
- *
- *      Revision 1.3  2003/11/12 17:26:00  bjeannet
- *      Mappe and Sette changed according to the OCaml 3.07 standard library.
- *      Printing functions generalized with optional arguments.
- *      Miscellaneous.
- *
- *      Revision 1.2  2003/03/03 12:30:36  bjeannet
- *      Function iter_rec added: iters on elements while passing the arrays of surrounding components.
- *
- *      Revision 1.1.1.1  2001/01/25 08:44:10  bjeannet
- *      Library of Caml modules dealing with sets, multisets, graphs, nested
- *      lists (Ilist), additionnal functions to standard module list (Listc),
- *      and a polymorphic version of standard module Map.
- *
- *
- *      Revision 1.2  1998/12/04 16:11:13  bjeannet
- *      *** empty log message ***
- *
- *      Revision 1.1  1998/05/22 09:19:35  bjeannet
- *      Initial revision
- *
- *
- *)
+(* Bertrand Jeannet. This file is released under LGPL license. *)
 
 (** Imbricated lists *)
 

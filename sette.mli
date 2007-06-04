@@ -21,7 +21,8 @@
     trees, and is therefore reasonably efficient: insertion and membership
     take time logarithmic in the size of the set, for instance.
 
-   Modified by B. Jeannet to get a generic type.
+    Modified by B. Jeannet to get a generic type and a few additions
+    (like conversions form and to maps and pretty-printing).
 *)
 
 type 'a t
