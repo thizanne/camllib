@@ -587,7 +587,7 @@ let scfc_aux
 	if filter h then begin
 	  let hedge_n = hedge_n g h in
 	  let cond =
-	    array_forall
+	    array_exists
 	      (fun v -> Hashhe.find hash v > min_int)
 	      hedge_n.predvertex
 	  in
@@ -1361,7 +1361,7 @@ module Make(T : T) : (S with type vertex=T.vertex
 	    if filter h then begin
 	      let hedge_n = hedge_n g h in
 	      let cond =
-		array_forall
+		array_exists
 		  (fun v -> HashV.find hash v > min_int)
 		  hedge_n.predvertex
 	      in
@@ -1444,7 +1444,7 @@ module Make(T : T) : (S with type vertex=T.vertex
 	  if filter h then begin
 	    let hedge_n = hedge_n g h in
 	    let cond =
-	      array_forall
+	      array_exists
 		(fun v -> HashV.find hash v > min_int)
 		hedge_n.predvertex
 	    in
@@ -1473,7 +1473,7 @@ module Make(T : T) : (S with type vertex=T.vertex
 	  if filter h then begin
 	    let hedge_n = hedge_n g h in
 	    let cond =
-	      array_forall
+	      array_exists
 		(fun v -> HashV.find hash v > min_int)
 		hedge_n.predvertex
 	    in
