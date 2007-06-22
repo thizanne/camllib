@@ -45,7 +45,7 @@ install:
 	cp -f $(LIB_TOINSTALL) $(LIB_TOINSTALLx) $(LIBDIR)
 clean:
 	/bin/rm -f *.cm[ioxa] *.o *.a *.cmxa *.html *.ps *.pdf *.dvi *.out
-	/bin/rm -f *.aux *.bbl *.blg *.dvi *.log *.toc *.idx *.ilg *.ind ocamldoc*.tex
+	/bin/rm -f *.aux *.bbl *.blg *.dvi *.log *.toc *.idx *.ilg *.ind ocamldoc*.tex ocamldoc.sty
 distclean: clean
 	(cd $(LIBDIR); rm -f $(LIB_TOINSTALL) $(LIB_TOINSTALLx))
 
