@@ -115,32 +115,35 @@ let rec subset ta tb =  match (ta,tb) with
     else if drp = 0 && na <= nb then subset la lb
     else false
 let iter = List.iter
-let fold = List.fold_right
+let rec fold f l accu =
+  match l with
+  | [] -> accu
+  | (a,n)::l -> fold f l (f (a,n) accu)
 let fold_right = List.fold_right
 let fold_left = List.fold_left
 let cardinal = List.length
 let elements = to_set
 let min_elt = function
-  | [] -> failwith "MultiSetList.min_elt: empty multiset"
+  | [] -> raise Not_found
   | (x,_) :: _ -> x
 let rec max_elt = function
-  | [] -> failwith "MultiSetList.max_elt: empty multiset"
+  | [] -> raise Not_found
   | [(x,_)] -> x
   | _ ::l -> max_elt l
 let min = function
-  | [] -> failwith "MultiSetList.min: empty multiset"
+  | [] -> raise Not_found
   | xn :: l -> 
       List.fold_left 
 	(fun ((_,mult) as res) ((_,n) as xn) -> if n < mult then xn else res)
 	xn l
 let max = function
-  | [] -> failwith "MultiSetList.max: empty multiset"
+  | [] -> raise Not_found
   | xn :: l -> 
       List.fold_left 
 	(fun ((_,mult) as res) ((_,n) as xn) -> if n > mult then xn else res)
 	xn l
 let mins = function
-  | [] -> failwith "MultiSetList.mins: empty multiset"
+  | [] -> raise Not_found
   | (x,n) :: l -> 
       List.fold_left 
 	(fun ((set,mult) as res) (x,n) -> 
@@ -149,7 +152,7 @@ let mins = function
 	  else res)
 	(SetList.singleton x,n) l
 let maxs = function
-  | [] -> failwith "MultiSetList.maxs: empty multiset"
+  | [] -> raise Not_found
   | (x,n) :: l -> 
       List.fold_left 
 	(fun ((set,mult) as res) (x,n) -> 
@@ -189,8 +192,8 @@ module type S =
     val is_empty: t -> bool
     val mem: elt -> t -> bool
     val mult: elt -> t -> int
-    val add: elt * int -> t -> t
     val singleton: elt * int -> t
+    val add: elt * int -> t -> t
     val remove: elt * int -> t -> t
     val union: t -> t -> t
     val inter: t -> t -> t
@@ -333,7 +336,7 @@ module Make(Ord: Set.OrderedType) = struct
       else if drp = 0 && na <= nb then subset la lb
       else false
   let iter = List.iter
-  let fold = List.fold_right
+  let fold = fold
   let fold_right = List.fold_right
   let fold_left = List.fold_left
   let cardinal = List.length

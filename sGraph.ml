@@ -319,7 +319,7 @@ let print print_vertex print_etiq print_arete formatter g =
     fprintf formatter "v = %a, @[<hv>etiq = %a,@ succ = %a@]"
       print_vertex v
       print_etiq nv.etiq
-      (Listc.pp_pretty_print print_vertex) (Sette.elements nv.succ)
+      (Sette.print print_vertex) nv.succ
   in
   fprintf formatter "[ @[<hv>";
   (Mappe.iter 

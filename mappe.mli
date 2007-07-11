@@ -33,61 +33,67 @@ val repr : ('a,'b) t -> ('a,'b) tzz
 val obj : ('a,'b) tzz -> ('a,'b) t
 
 val empty: ('a,'b) t
-          (** The empty map. *)
+	  (** The empty map. *)
 val add: 'a -> 'b -> ('a,'b) t -> ('a,'b) t
-        (** [add x y m] returns a map containing the same bindings as
-           [m], plus a binding of [x] to [y]. If [x] was already bound
-           in [m], its previous binding disappears. *)
+	(** [add x y m] returns a map containing the same bindings as
+	   [m], plus a binding of [x] to [y]. If [x] was already bound
+	   in [m], its previous binding disappears. *)
 val find: 'a -> ('a,'b) t -> 'b
-        (** [find x m] returns the current binding of [x] in [m],
-           or raises [Not_found] if no such binding exists. *)
+	(** [find x m] returns the current binding of [x] in [m],
+	   or raises [Not_found] if no such binding exists. *)
 val remove: 'a -> ('a,'b) t -> ('a,'b) t
-        (** [remove x m] returns a map containing the same bindings as
-           [m], except for [x] which is unbound in the returned map. *)
+	(** [remove x m] returns a map containing the same bindings as
+	   [m], except for [x] which is unbound in the returned map. *)
 val mem:  'a -> ('a,'b) t -> bool
-        (** [mem x m] returns [true] if [m] contains a binding for [m],
-           and [false] otherwise. *)
+	(** [mem x m] returns [true] if [m] contains a binding for [m],
+	   and [false] otherwise. *)
 val addmap : ('a,'b) t -> ('a,'b) t -> ('a,'b) t
-val interset : ('a,'b) t -> 'a Sette.t -> ('a,'b) t 
-val diffset : ('a,'b) t -> 'a Sette.t -> ('a,'b) t 
+	(** [addmap a b] merges the two maps [a] and [b]. If a key of [b] was
+	    already bound in [a], the previous bindings in [a] disappears. *)
+val interset : ('a,'b) t -> 'a Sette.t -> ('a,'b) t
+	(** [interset map set] selects the bindings in [a] whose key belongs to
+	    [set]. *)
+val diffset : ('a,'b) t -> 'a Sette.t -> ('a,'b) t
+	(** [interset map set] removes the bindings of [a] whose key belongs to
+	    [set]. *)
 val iter: ('a -> 'b -> unit) -> ('a,'b) t -> unit
-        (** [iter f m] applies [f] to all bindings in map [m].
-           [f] receives the key as first argument, and the associated value
-           as second argument. The order in which the bindings are passed to
-           [f] is unspecified. Only current bindings are presented to [f]:
-           bindings hidden by more recent bindings are not passed to [f]. *)
+	(** [iter f m] applies [f] to all bindings in map [m].
+	   [f] receives the key as first argument, and the associated value
+	   as second argument. The order in which the bindings are passed to
+	   [f] is unspecified. Only current bindings are presented to [f]:
+	   bindings hidden by more recent bindings are not passed to [f]. *)
 val map: ('b -> 'c) -> ('a,'b) t -> ('a,'c) t
-        (** [map f m] returns a map with same domain as [m], where the
-           associated value [a] of all bindings of [m] has been
-           replaced by the result of the application of [f] to [a].
-           The order in which the associated values are passed to [f]
-           is unspecified. *)
+	(** [map f m] returns a map with same domain as [m], where the
+	   associated value [a] of all bindings of [m] has been
+	   replaced by the result of the application of [f] to [a].
+	   The order in which the associated values are passed to [f]
+	   is unspecified. *)
 val mapi: ('a -> 'b -> 'c) -> ('a,'b) t -> ('a,'c) t
-        (** Same as [map], but the function receives as arguments both the
-           key and the associated value for each binding of the map. *)
+	(** Same as [map], but the function receives as arguments both the
+	   key and the associated value for each binding of the map. *)
 val fold: ('a -> 'b -> 'c -> 'c) -> ('a,'b) t -> 'c -> 'c
-        (** [fold f m a] computes [(f kN dN ... (f k1 d1 a)...)],
-           where [k1 ... kN] are the keys of all bindings in [m],
-           and [d1 ... dN] are the associated data.
-           The order in which the bindings are presented to [f] is
-           unspecified. *)
+	(** [fold f m a] computes [(f kN dN ... (f k1 d1 a)...)],
+	   where [k1 ... kN] are the keys of all bindings in [m],
+	   and [d1 ... dN] are the associated data.
+	   The order in which the bindings are presented to [f] is
+	   unspecified. *)
 val maptoset: ('a,'b) t -> 'a Sette.t
-        (** [maptoset m] returns the set of the keys in the association table *)
+	(** [maptoset m] returns the set of the keys in the association table *)
 val mapofset: ('a -> 'b) -> 'a Sette.t -> ('a,'b) t
-        (** [mapofset f s] returns the map associating [f key] to
+	(** [mapofset f s] returns the map associating [f key] to
 	   [key], for each element [key] of the set [s] *)
 val compare: ?compare:('b -> 'b -> int) -> ('a,'b) t -> ('a,'b) t -> int
-        (** Comparison function between maps *)
+	(** Comparison function between maps *)
 val filter: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t
-        (** [filter p m] returns the map of all bindings in [m] that satisfy
+	(** [filter p m] returns the map of all bindings in [m] that satisfy
 	  predicate [p]. *)
 val partition: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t * ('a,'b) t
-        (** [partition p m] returns a pair of maps [(m1, m2)], where [m1] is
+	(** [partition p m] returns a pair of maps [(m1, m2)], where [m1] is
 	  the map of all the bindings of [m] that satisfy the predicate [p],
 	  and [m2] is the map of all the bindings of [m] that do not satisfy
 	  [p]. *)
 val cardinal: ('a,'b) t -> int
-        (** Number of keys of a map *)
+	(** Number of keys of a map *)
 val print :
     ?first:(unit, Format.formatter, unit) format ->
     ?sep:(unit, Format.formatter, unit) format ->
@@ -96,13 +102,13 @@ val print :
     ?sepbind:(unit, Format.formatter, unit) format ->
     ?lastbind:(unit, Format.formatter, unit) format ->
     (Format.formatter -> 'a -> unit) ->
-    (Format.formatter -> 'b -> unit) -> 
+    (Format.formatter -> 'b -> unit) ->
     Format.formatter -> ('a,'b) t -> unit
-      (** *)
+      (** Print a map. *)
 
 (** Output signature of the functor {!Mappe.Make}. *)
 module type S = sig
-  type key    
+  type key
   type 'a t
 
   module Setkey : (Sette.S with type elt=key)
@@ -116,8 +122,8 @@ module type S = sig
   val remove : key -> 'a t -> 'a t
   val mem : key -> 'a t -> bool
   val addmap : 'a t -> 'a t -> 'a t
-  val interset : 'a t -> Setkey.t -> 'a t 
-  val diffset : 'a t -> Setkey.t -> 'a t 
+  val interset : 'a t -> Setkey.t -> 'a t
+  val diffset : 'a t -> Setkey.t -> 'a t
   val iter : (key -> 'a -> unit) -> 'a t -> unit
   val map : ('a -> 'b) -> 'a t -> 'b t
   val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
@@ -136,11 +142,11 @@ module type S = sig
     ?sepbind:(unit, Format.formatter, unit) format ->
     ?lastbind:(unit, Format.formatter, unit) format ->
     (Format.formatter -> key -> unit) ->
-    (Format.formatter -> 'a -> unit) -> 
+    (Format.formatter -> 'a -> unit) ->
     Format.formatter -> 'a t -> unit
 end
 
 (** Functor building an implementation of the map structure
    given a totally ordered type. *)
-module Make(Setkey : Sette.S) : (S with type key=Setkey.elt 
+module Make(Setkey : Sette.S) : (S with type key=Setkey.elt
 				   and module Setkey=Setkey)

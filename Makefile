@@ -14,14 +14,11 @@ CSLFLAGS = -g
 CSLOPTFLAGS = -inline 20
 
 FILES = print sette mappe hashhe \
-	setList multiSetList setArray	\
-	ilist listc graph sGraph sHGraph symbol union	\
-	dassoc dMappe dHashhe statistic time rational \
-	hashheI hashheII hashheIB \
-	hashI hashII hashIB \
-	setteI setteII setteS mappeI mappeII \
-	dHashtbl \
-	dMappeI dMappeIS graphI 
+	setteI mappeI hashheI hashheIB \
+	dMappe dHashhe \
+	setList multiSetList \
+	ilist sGraph sHGraph symbol union \
+	statistic time rational
 
 SRC = $(FILES:%=%.mli) $(FILES:%=%.ml)
 

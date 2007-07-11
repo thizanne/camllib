@@ -4,7 +4,7 @@
 
 (** Imbricated lists *)
 
-(** Functional semantics of the operations. *)
+(** The operations of this module have a functional semantics. *)
 
 (** Type of list elements. *)
 type 'a el = 

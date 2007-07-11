@@ -1,6 +1,15 @@
 (* $Id: print.mli,v 1.1 2005/06/14 14:27:40 bjeannet Exp $ *)
 
-(** Printing functions for standard datatypes *)
+(** Printing functions using module [Format] *)
+
+(** {2 Printing functions for standard datatypes (lists,arrays,...)} *)
+
+(** In the following functions, optional arguments [?first], [?sep], [?last]
+  denotes the formatting instructions (under the form of a [format] string)
+  issued at the beginning, between two elements, and at the end.
+
+  The functional argument(s) indicate(s) how to print elements. 
+*)
 
 val list : 
   ?first:(unit,Format.formatter,unit) format -> 
@@ -8,6 +17,7 @@ val list :
   ?last:(unit,Format.formatter,unit) format -> 
   (Format.formatter -> 'a -> unit) -> 
   Format.formatter -> 'a list -> unit
+  (** Print a list *)
 
 val array : 
   ?first:(unit,Format.formatter,unit) format -> 
@@ -15,6 +25,7 @@ val array :
   ?last:(unit,Format.formatter,unit) format -> 
   (Format.formatter -> 'a -> unit) -> 
   Format.formatter -> 'a array -> unit
+  (** Print an array *)
 
 val pair : 
   ?first:(unit,Format.formatter,unit) format -> 
@@ -23,6 +34,7 @@ val pair :
   (Format.formatter -> 'a -> unit) -> 
   (Format.formatter -> 'b -> unit) -> 
   Format.formatter -> 'a * 'b -> unit
+  (** Print a pair *)
 
 val hash :
     ?first:(unit, Format.formatter, unit) format ->
@@ -34,14 +46,21 @@ val hash :
     (Format.formatter -> 'a -> unit) ->
     (Format.formatter -> 'b -> unit) -> 
     Format.formatter -> ('a,'b) Hashtbl.t -> unit
+  (** Print an hashtable *)
+
+(** {2 Useful functions} *)
 
 val string_of_print:
   (Format.formatter -> 'a -> unit) ->
   ('a -> string) 
+  (** Transforms a printing function into a conversion-to-string function. *)
 
 val print_of_string:
   ('a -> string) ->
   (Format.formatter -> 'a -> unit)
+  (** Transforms a conversion-to-string function to a printing function. *)
 
 val sprintf:
   ('a, Format.formatter, unit, string) format4 -> 'a
+  (** Better [sprintf] function than [Format.sprintf], as it takes the same
+    kind of formatters as other [Format.Xprintf] functions. *)

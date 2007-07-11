@@ -4,35 +4,6 @@
         Ensembles implantes avec des listes triees
 *)
 
-(*
- *      $Log: setList.ml,v $
- *      Revision 1.6  2005/06/14 14:25:14  bjeannet
- *      Use now Print module.
- *
- *      Revision 1.5  2003/11/12 20:39:02  bjeannet
- *      OK for ocamldoc.
- *
- *      Revision 1.4  2003/11/12 17:26:00  bjeannet
- *      Mappe and Sette changed according to the OCaml 3.07 standard library.
- *      Printing functions generalized with optional arguments.
- *      Miscellaneous.
- *
- *      Revision 1.3  2003/02/12 09:56:38  bjeannet
- *      Added functions exists and for_all.
- *
- *      Revision 1.2  2001/07/12 15:37:25  bjeannet
- *      Corrected the type of SetList.fold, to be conforming to Set.fold.
- *
- *      Revision 1.1.1.1  2001/01/25 08:44:10  bjeannet
- *      Library of Caml modules dealing with sets, multisets, graphs, nested
- *      lists (Ilist), additionnal functions to standard module list (Listc),
- *      and a polymorphic version of standard module Map.
- *
- *
- *      Revision 1.1  1998/12/04 16:11:13  bjeannet
- *      Initial revision
- *
- *)
 (** Sets over totally ordered type with lists *)
 
 (* version generique *)
@@ -49,7 +20,7 @@ let rec mem elt = function
       if drp > 0 then false
       else if drp=0 then true
       else mem elt l
-let of_list l = l
+let of_list l = List.stable_sort Pervasives.compare l
 let to_list l = l
 let singleton elt = [elt]
 let rec add elt = function
@@ -152,7 +123,6 @@ let rec for_all f = function
 (* version parametree *)
 
 (** Output signature of the functor {!SetList.Make} *)
-(** Output signature of the functor {!SetList.Make} *)
 module type S =
   sig
     type elt
@@ -165,10 +135,10 @@ module type S =
     val empty : t
     val is_empty : t -> bool
     val mem : elt -> t -> bool
-    val add : elt -> t -> t
     val of_list : elt list -> t
     val to_list : t -> elt list
     val singleton : elt -> t
+    val add : elt -> t -> t
     val remove : elt -> t -> t
     val union : t -> t -> t
     val inter : t -> t -> t
