@@ -42,19 +42,24 @@ install:
 	cp -f $(LIB_TOINSTALL) $(LIB_TOINSTALLx) $(LIBDIR)
 clean:
 	/bin/rm -f *.cm[ioxa] *.o *.a *.cmxa *.html *.ps *.pdf *.dvi *.out
-	/bin/rm -f *.aux *.bbl *.blg *.dvi *.log *.toc *.idx *.ilg *.ind ocamldoc*.tex ocamldoc.sty
+	/bin/rm -f *.aux *.bbl *.blg *.dvi *.pdf *.log *.toc *.idx *.ilg *.ind ocamldoc*.tex ocamldoc.sty
+	/bin/rm -fr html
 distclean: clean
 	(cd $(LIBDIR); rm -f $(LIB_TOINSTALL) $(LIB_TOINSTALLx))
 
 wc: $(SRC)
 	wc $^
 
-tar: $(SRC) Makefile camllib.tex README
+tar: $(SRC) Makefile camllib.tex camllib.pdf README 
 	@echo "*** Archiving source files in ~/camllib.tgz ***"
 	(cd ..; tar zcf $(HOME)/camllib.tgz $(^:%=camllib/%))
 	@echo "*** Files archived in ~/camllib.tgz ***"
 
 # TEX rules
+.PHONY: camllib.dvi camllib.pdf html
+
+camllib.pdf: camllib.dvi
+	dvipdf camllib.dvi camllib.pdf
 
 camllib.dvi: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
 	ocamldoc.opt -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -latex -o ocamldoc.tex $(FILES:%=%.mli) $(FILES:%=%.ml)
@@ -71,7 +76,8 @@ camllibcode.dvi: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
 	latex camllib
 
 html: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
-	$(OCAMLDOC) -html -keep-code $(FILES:%=%.ml) $(FILES:%=%.mli)
+	mkdir -p html
+	$(OCAMLDOC) -html -d html -colorize-code $(FILES:%=%.ml) $(FILES:%=%.mli)
 
 dot: $(INT) $(FILES:%=%.mli)
 	$(OCAMLDOC) -dot $(FILES:%=%.mli)

@@ -54,6 +54,32 @@ let clear g =
   Hashhe.clear g.hedge;
   ()
 
+type 'a priority =
+  | All
+  | Filter of ('a -> bool)
+  | Priority of ('a -> int)
+
+let filter_priority (p:'a priority)
+  :
+  'a -> bool
+  =
+  begin match p with
+  | All -> fun x -> true
+  | Filter f -> fun x -> f x
+  | Priority f -> fun x -> f x >= 0
+  end
+
+let compare_priority (p:'a priority)
+  :
+  'a -> 'a -> int
+  =
+   begin match p with
+  | All | Filter _ -> fun x y -> 0
+  | Priority f ->
+      fun x y -> let x = f x and y = f y in Pervasives.compare y x
+   end
+
+
 (* *********************************************************************** *)
 (* Internal functions *)
 (* *********************************************************************** *)
@@ -454,48 +480,44 @@ let reachable_filter_multi vertex_dummy hedge_dummy g filter root =
 (* *********************************************************************** *)
 (* Strongly Connected Components *)
 (* *********************************************************************** *)
+
 let cfc_aux
-  ?(filter=(fun _ -> true))
+  priority
   g root
   =
   let
     num     = ref(-1) and
     partition = ref [] and
     pile    = Stack.create() and
-    hash    = Hashhe.create 23
+    hash    = Hashhe.create 23 and
+    filterp  = filter_priority priority and
+    comparep = compare_priority priority
   in
-  let rec visit sommet =
+  let rec visit sommet
+    =
     Stack.push sommet pile;
     incr num;
     let num_sommet = !num in
     Hashhe.replace hash sommet num_sommet;
+    let succhedges = succhedge g sommet in
     let head =
-      Sette.fold
-	(begin fun h head ->
-	  if filter h then begin
-	    let hedge_n = hedge_n g h in
-	    let cond =
-	      array_exists
-		(fun v -> Hashhe.find hash v > min_int)
-		hedge_n.predvertex
-	    in
-	    if cond then begin
-	      Array.fold_left
-		(begin fun head succ ->
-		  let dfn = Hashhe.find hash succ in
-		  let m = if dfn=min_int then (visit succ) else dfn in
-		  min m head
-		end)
-		head
-		hedge_n.succvertex
-	    end
-	    else head
-	  end
-	  else
-	    head
-	end)
-	(succhedge g sommet)
-	!num
+      match priority with
+      | All ->
+	  Sette.fold compute_head succhedges !num
+      | Filter _ ->
+	  Sette.fold
+	  (begin fun h head ->
+	    if filterp h then compute_head h head else head
+	  end)
+	  succhedges !num
+      | Priority _ ->
+	  let lhedges =
+	    Sette.fold
+	      (begin fun h res -> if filterp h then h::res else res end)
+	      succhedges []
+	  in
+	  let lhedges = List.sort comparep lhedges in
+	  List.fold_left (fun head h -> compute_head h head) !num lhedges
     in
     if head = num_sommet then
       begin
@@ -510,103 +532,137 @@ let cfc_aux
 	partition := !composante :: !partition
       end;
     head
+  and compute_head h head
+    =
+    let hedge_n = hedge_n g h in
+    let cond =
+      array_exists
+	(fun v -> Hashhe.find hash v > min_int)
+	hedge_n.predvertex
+    in
+    if cond then begin
+      Array.fold_left
+	(begin fun head succ ->
+	  let dfn = Hashhe.find hash succ in
+	  let m = if dfn=min_int then (visit succ) else dfn in
+	  min m head
+	end)
+	head
+	hedge_n.succvertex
+    end
+    else
+      head
   in
+
   iter_vertex g (fun v _ ~pred:_ ~succ:_ -> Hashhe.add hash v min_int);
   let _ = visit root in
   !partition
 
-let cfc g root = cfc_aux g root
+let cfc g root = cfc_aux All g root
 
-let cfc_multi vertex_dummy hedge_dummy g root =
+let cfc_multi_aux priority vertex_dummy hedge_dummy g root =
   add_dummy_forward vertex_dummy hedge_dummy g root;
-  let res = cfc g vertex_dummy in
+  let res = cfc_aux priority g vertex_dummy in
   rem_dummy vertex_dummy hedge_dummy g;
   begin match res with
   | (x::r)::l when (compare x vertex_dummy)=0 -> r::l
-  | _ -> failwith "hGgraph.ml: Make().cfc_multi"
+  | _ -> failwith "cfc_multi_aux"
   end
+
+let cfc_multi vertex_dummy hedge_dummy g root = 
+  cfc_multi_aux All vertex_dummy hedge_dummy g root
 
 let cfc_filter_multi vertex_dummy hedge_dummy g filter root =
-  add_dummy_forward vertex_dummy hedge_dummy g root;
-  let res =
-    cfc_aux
-      ~filter:(fun h -> if h = hedge_dummy then true else filter h)
-      g vertex_dummy
-  in
-  rem_dummy vertex_dummy hedge_dummy g;
-  begin match res with
-  | (x::r)::l when (compare x vertex_dummy)=0 -> r::l
-  | _ -> failwith "hGgraph.ml: Make().cfc_multi"
-  end
+  cfc_multi_aux 
+    (Filter (fun h -> if h = hedge_dummy then true else filter h))
+    vertex_dummy hedge_dummy g root
+
+let cfc_priority_multi vertex_dummy hedge_dummy g priority root =
+  cfc_multi_aux 
+    (Priority (fun h -> if h = hedge_dummy then 0 else priority h))
+    vertex_dummy hedge_dummy g root
 
 (* *********************************************************************** *)
 (* Strongly Connected Sub-Components *)
 (* *********************************************************************** *)
 let scfc_aux
-  ?(filter=(fun _ -> true))
+  priority
   g
   root
   =
   let num     = ref(-1) and
     pile    = Stack.create() and
-    hash    = Hashhe.create (size_vertex g)
+    hash    = Hashhe.create (size_vertex g) and
+    filterp  = filter_priority priority and
+    comparep = compare_priority priority
   in
-  let rec composante sommet =
-    let partition = ref Ilist.Nil in
-    Sette.iter
-      (begin fun h ->
-	if filter h then begin
-	  let hedge_n = hedge_n g h in
-	  let cond =
-	    array_exists
-	      (fun v -> Hashhe.find hash v > min_int)
-	      hedge_n.predvertex
-	  in
-	  if cond then begin
-	    Array.iter
-	      (begin fun succ ->
-		if Hashhe.find hash succ = min_int then begin
-		  ignore (visit succ partition)
-		end
-	      end)
-	      hedge_n.succvertex
+  let rec composante_aux partition h
+    =
+    let hedge_n = hedge_n g h in
+    let cond =
+      array_exists
+	(fun v -> Hashhe.find hash v > min_int)
+	hedge_n.predvertex
+    in
+    if cond then begin
+      Array.iter
+	(begin fun succ ->
+	  if Hashhe.find hash succ = min_int then begin
+	    ignore (visit succ partition)
 	  end
-	end
-      end)
-      (succhedge g sommet)
-    ;
+	end)
+	hedge_n.succvertex
+    end
+  and composante sommet
+    =
+    let partition = ref Ilist.Nil in
+    let succhedges = succhedge g sommet in
+    begin match priority with
+    | All ->
+	Sette.iter (composante_aux partition) succhedges
+    | Filter _ ->
+	Sette.iter
+	(begin fun h ->
+	  if filterp h then composante_aux partition h
+	end)
+	succhedges
+    | Priority _ ->
+	let lhedges =
+	  Sette.fold
+	    (begin fun h res -> if filterp h then h::res else res end)
+	    succhedges []
+	in
+	let lhedges = List.sort comparep lhedges in
+	List.iter (composante_aux partition) lhedges
+    end;
     Ilist.Cons(Ilist.Atome sommet, !partition)
-  and visit sommet partition =
+
+  and visit sommet partition
+    =
     Stack.push sommet pile;
     incr num;
     let num_sommet = !num in
     Hashhe.replace hash sommet num_sommet;
     let head = ref !num and loop = ref false in
-    Sette.iter
-      (begin fun h ->
-	if filter h then begin
-	  let hedge_n = hedge_n g h in
-	  let cond =
-	    array_exists
-	      (fun v -> Hashhe.find hash v > min_int)
-	      hedge_n.predvertex
-	  in
-	  if cond then begin
-	    Array.iter
-	      (begin fun succ ->
-		let dfn = Hashhe.find hash succ in
-		let m =
-		  if dfn=min_int
-		  then (visit succ partition)
-		  else dfn
-		in
-		if m <= !head then begin loop := true; head := m end
-	      end)
-	      hedge_n.succvertex
-	  end
-	end
-      end)
-      (succhedge g sommet)
+    let succhedges = succhedge g sommet in
+    begin match priority with
+    | All ->
+	Sette.iter (compute_head partition head loop) succhedges
+    | Filter _ ->
+	Sette.iter
+	(begin fun h ->
+	  if filterp h then (compute_head partition head loop) h
+	end)
+	succhedges
+    | Priority _ ->
+	let lhedges =
+	  Sette.fold
+	    (begin fun h res -> if filterp h then h::res else res end)
+	    succhedges []
+	in
+	let lhedges = List.sort comparep lhedges in
+	List.iter (compute_head partition head loop) lhedges
+    end
     ;
     if !head = num_sommet then
       begin
@@ -624,6 +680,28 @@ let scfc_aux
 	  partition := Ilist.Cons(Ilist.Atome(sommet),!partition)
       end;
     !head
+
+  and compute_head partition head loop h
+    =
+    let hedge_n = hedge_n g h in
+    let cond =
+      array_exists
+	(fun v -> Hashhe.find hash v > min_int)
+	hedge_n.predvertex
+    in
+    if cond then begin
+      Array.iter
+	(begin fun succ ->
+	  let dfn = Hashhe.find hash succ in
+	  let m =
+	    if dfn=min_int
+	    then (visit succ partition)
+	    else dfn
+	  in
+	  if m <= !head then begin loop := true; head := m end
+	end)
+	hedge_n.succvertex
+    end
   in
 
   iter_vertex g (fun v _ ~pred:_ ~succ:_ -> Hashhe.add hash v min_int);
@@ -632,28 +710,29 @@ let scfc_aux
   !partition
 
 let scfc g root =
-  scfc_aux g root
+  scfc_aux All g root
 
-let scfc_multi vertex_dummy hedge_dummy g root =
+let scfc_multi_aux priority vertex_dummy hedge_dummy g root =
   add_dummy_forward vertex_dummy hedge_dummy g root;
-  let res = scfc g vertex_dummy in
+  let res = scfc_aux priority g vertex_dummy in
   rem_dummy vertex_dummy hedge_dummy g;
   begin match res with
   | Ilist.Cons(Ilist.Atome(x),l) when (compare x vertex_dummy) = 0 -> l
-  | _ -> failwith "hGraph.ml: Make().scfc_multi"
+  | _ -> failwith "hGraph.ml: scfc_multi"
   end
+
+let scfc_multi vertex_dummy hedge_dummy g root = 
+  scfc_multi_aux All vertex_dummy hedge_dummy g root 
 
 let scfc_filter_multi vertex_dummy hedge_dummy g filter root =
-  add_dummy_forward vertex_dummy hedge_dummy g root;
-  let res = scfc_aux
-      ~filter:(fun h -> if h = hedge_dummy then true else filter h)
-      g vertex_dummy
-  in
-  rem_dummy vertex_dummy hedge_dummy g;
-  begin match res with
-  | Ilist.Cons(Ilist.Atome(x),l) when (compare x vertex_dummy) = 0 -> l
-  | _ -> failwith "hGraph.ml: Make().scfc_multi"
-  end
+  scfc_multi_aux
+    (Filter (fun h -> if h = hedge_dummy then true else filter h))
+    vertex_dummy hedge_dummy g root
+
+let scfc_priority_multi vertex_dummy hedge_dummy g priority root =
+  scfc_multi_aux
+    (Priority (fun h -> if h = hedge_dummy then 0 else priority h))
+    vertex_dummy hedge_dummy g root
 
 (* *********************************************************************** *)
 (* Printing *)
@@ -886,7 +965,6 @@ module type S = sig
     (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> 'aa) ->
     (hedge -> 'b -> pred:vertex array -> succ:vertex array -> 'bb) ->
     ('c -> 'cc) ->
-    ('a,'b,'c) t ->
     ('aa,'bb,'cc) t
 
   (** {3 Copy and Transpose} *)
@@ -929,6 +1007,8 @@ module type S = sig
     ('a,'b,'c) t -> SetV.t -> vertex list list
   val cfc_filter_multi :
     ('a,'b,'c) t -> (hedge -> bool) -> SetV.t -> vertex list list
+  val cfc_priority_multi :
+    ('a,'b,'c) t -> (hedge -> int) -> SetV.t -> vertex list list
 
   val scfc :
     ('a,'b,'c) t -> vertex -> vertex Ilist.t
@@ -936,6 +1016,8 @@ module type S = sig
     ('a,'b,'c) t -> SetV.t -> vertex Ilist.t
   val scfc_filter_multi :
     ('a,'b,'c) t -> (hedge -> bool) -> SetV.t -> vertex Ilist.t
+  val scfc_priority_multi :
+    ('a,'b,'c) t -> (hedge -> int) -> SetV.t -> vertex Ilist.t
 
   (** {3 Printing} *)
 
@@ -1340,7 +1422,7 @@ module Make(T : T) : (S with type vertex=T.vertex
   (* Strongly Connected Components *)
   (* *********************************************************************** *)
   let cfc_aux
-    ?(filter=(fun _ -> true))
+    priority
     (g:('a,'b,'c) t)
     (root:vertex)
     =
@@ -1348,40 +1430,35 @@ module Make(T : T) : (S with type vertex=T.vertex
       num     = ref(-1) and
       partition = ref [] and
       pile    = Stack.create() and
-      hash    = HashV.create 23
+      hash    = HashV.create 23 and
+      filterp  = filter_priority priority and
+      comparep = compare_priority priority
     in
-    let rec visit sommet =
+    let rec visit sommet
+      =
       Stack.push sommet pile;
       incr num;
       let num_sommet = !num in
       HashV.replace hash sommet num_sommet;
+      let succhedges = succhedge g sommet in
       let head =
-	SetH.fold
-	  (begin fun h head ->
-	    if filter h then begin
-	      let hedge_n = hedge_n g h in
-	      let cond =
-		array_exists
-		  (fun v -> HashV.find hash v > min_int)
-		  hedge_n.predvertex
-	      in
-	      if cond then begin
-		Array.fold_left
-		  (begin fun head succ ->
-		    let dfn = HashV.find hash succ in
-		    let m = if dfn=min_int then (visit succ) else dfn in
-		    min m head
-		  end)
-		  head
-		  hedge_n.succvertex
-	      end
-	      else head
-	    end
-	    else
-	      head
-	  end)
-	  (succhedge g sommet)
-	  !num
+	match priority with
+	| All ->
+	    SetH.fold compute_head succhedges !num
+	| Filter _ ->
+	    SetH.fold
+	    (begin fun h head ->
+	      if filterp h then compute_head h head else head
+	    end)
+	    succhedges !num
+	| Priority _ ->
+	    let lhedges =
+	      SetH.fold
+		(begin fun h res -> if filterp h then h::res else res end)
+		succhedges []
+	    in
+	    let lhedges = List.sort comparep lhedges in
+	    List.fold_left (fun head h -> compute_head h head) !num lhedges
       in
       if head = num_sommet then
 	begin
@@ -1396,103 +1473,136 @@ module Make(T : T) : (S with type vertex=T.vertex
 	  partition := !composante :: !partition
 	end;
       head
+    and compute_head h head
+      =
+      let hedge_n = hedge_n g h in
+      let cond =
+	array_exists
+	  (fun v -> HashV.find hash v > min_int)
+	  hedge_n.predvertex
+      in
+      if cond then begin
+	Array.fold_left
+	  (begin fun head succ ->
+	    let dfn = HashV.find hash succ in
+	    let m = if dfn=min_int then (visit succ) else dfn in
+	    min m head
+	  end)
+	  head
+	  hedge_n.succvertex
+      end
+      else
+	head
     in
+
     iter_vertex g (fun v _ ~pred:_ ~succ:_ -> HashV.add hash v min_int);
     let _ = visit root in
     !partition
 
-  let cfc g root = cfc_aux g root
+  let cfc g root = cfc_aux All g root
 
-  let cfc_multi g root =
+  let cfc_multi_aux priority g root =
     add_dummy_forward g root;
-    let res = cfc g T.vertex_dummy in
+    let res = cfc_aux priority g T.vertex_dummy in
     rem_dummy g;
     begin match res with
     | (x::r)::l when (SetV.Ord.compare x T.vertex_dummy)=0 -> r::l
-    | _ -> failwith "hGgraph.ml: Make().cfc_multi"
+    | _ -> failwith "Make().cfc_multi_aux"
     end
 
+  let cfc_multi g root = 
+    cfc_multi_aux All g root
+    
   let cfc_filter_multi g filter root =
-    add_dummy_forward g root;
-    let res =
-      cfc_aux
-	~filter:(fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then true else filter h)
-	g T.vertex_dummy
-    in
-    rem_dummy g;
-    begin match res with
-    | (x::r)::l when (SetV.Ord.compare x T.vertex_dummy)=0 -> r::l
-    | _ -> failwith "hGgraph.ml: Make().cfc_multi"
-    end
+    cfc_multi_aux 
+      (Filter (fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then true else filter h))
+      g root
+      
+  let cfc_priority_multi g priority root =
+    cfc_multi_aux 
+      (Priority (fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then 0 else priority h))
+      g root
 
   (* *********************************************************************** *)
   (* Strongly Connected Sub-Components *)
   (* *********************************************************************** *)
   let scfc_aux
-    ?(filter=(fun _ -> true))
+    priority
     g
     root
     =
     let num     = ref(-1) and
       pile    = Stack.create() and
-      hash    = HashV.create (size_vertex g)
+      hash    = HashV.create (size_vertex g) and
+      filterp  = filter_priority priority and
+      comparep = compare_priority priority
     in
-    let rec composante sommet =
-      let partition = ref Ilist.Nil in
-      SetH.iter
-	(begin fun h ->
-	  if filter h then begin
-	    let hedge_n = hedge_n g h in
-	    let cond =
-	      array_exists
-		(fun v -> HashV.find hash v > min_int)
-		hedge_n.predvertex
-	    in
-	    if cond then begin
-	      Array.iter
-		(begin fun succ ->
-		  if HashV.find hash succ = min_int then begin
-		    ignore (visit succ partition)
-		  end
-		end)
-		hedge_n.succvertex
+    let rec composante_aux partition h
+      =
+      let hedge_n = hedge_n g h in
+      let cond =
+	array_exists
+	  (fun v -> HashV.find hash v > min_int)
+	  hedge_n.predvertex
+      in
+      if cond then begin
+	Array.iter
+	  (begin fun succ ->
+	    if HashV.find hash succ = min_int then begin
+	      ignore (visit succ partition)
 	    end
-	  end
-	end)
-	(succhedge g sommet)
-      ;
+	  end)
+	  hedge_n.succvertex
+      end
+	
+    and composante sommet =
+      let partition = ref Ilist.Nil in
+      let succhedges = succhedge g sommet in
+      begin match priority with
+      | All ->
+	  SetH.iter (composante_aux partition) succhedges
+      | Filter _ ->
+	  SetH.iter
+	  (begin fun h ->
+	    if filterp h then composante_aux partition h
+	  end)
+	  succhedges
+      | Priority _ ->
+	  let lhedges =
+	    SetH.fold
+	      (begin fun h res -> if filterp h then h::res else res end)
+	      succhedges []
+	  in
+	  let lhedges = List.sort comparep lhedges in
+	  List.iter (composante_aux partition) lhedges
+      end;
       Ilist.Cons(Ilist.Atome sommet, !partition)
+
     and visit sommet partition =
       Stack.push sommet pile;
       incr num;
       let num_sommet = !num in
       HashV.replace hash sommet num_sommet;
       let head = ref !num and loop = ref false in
-      SetH.iter
-	(begin fun h ->
-	  if filter h then begin
-	    let hedge_n = hedge_n g h in
-	    let cond =
-	      array_exists
-		(fun v -> HashV.find hash v > min_int)
-		hedge_n.predvertex
-	    in
-	    if cond then begin
-	      Array.iter
-		(begin fun succ ->
-		  let dfn = HashV.find hash succ in
-		  let m =
-		    if dfn=min_int
-		    then (visit succ partition)
-		    else dfn
-		  in
-		  if m <= !head then begin loop := true; head := m end
-		end)
-		hedge_n.succvertex
-	    end
-	  end
-	end)
-	(succhedge g sommet)
+      let succhedges = succhedge g sommet in
+      begin match priority with
+      | All ->
+	  SetH.iter (compute_head partition head loop) succhedges
+      | Filter _ ->
+	  SetH.iter
+	  (begin fun h ->
+	    if filterp h then compute_head partition head loop h
+	  end)
+	  succhedges
+      | Priority _ ->
+	  let lhedges =
+	    SetH.fold
+	      (begin fun h res -> if filterp h then h::res else res end)
+	      succhedges []
+	  in
+	  let lhedges = List.sort comparep lhedges in
+	  List.iter (compute_head partition head loop) lhedges
+      end
       ;
       if !head = num_sommet then
 	begin
@@ -1510,36 +1620,59 @@ module Make(T : T) : (S with type vertex=T.vertex
 	    partition := Ilist.Cons(Ilist.Atome(sommet),!partition)
 	end;
       !head
-    in
 
+    and compute_head partition head loop h
+      =
+      let hedge_n = hedge_n g h in
+      let cond =
+	array_exists
+	  (fun v -> HashV.find hash v > min_int)
+	  hedge_n.predvertex
+      in
+      if cond then begin
+	Array.iter
+	  (begin fun succ ->
+	    let dfn = HashV.find hash succ in
+	    let m =
+	      if dfn=min_int
+	      then (visit succ partition)
+	      else dfn
+	    in
+	    if m <= !head then begin loop := true; head := m end
+	  end)
+	  hedge_n.succvertex
+      end
+    in
+    
     iter_vertex g (fun v _ ~pred:_ ~succ:_ -> HashV.add hash v min_int);
     let partition = ref Ilist.Nil in
     let _ = visit root partition in
     !partition
-
+  
   let scfc g root =
-    scfc_aux g root
+    scfc_aux All g root
 
-  let scfc_multi g root =
+  let scfc_multi_aux priority g root =
     add_dummy_forward g root;
-    let res = scfc g T.vertex_dummy in
+    let res = scfc_aux priority g T.vertex_dummy in
     rem_dummy g;
     begin match res with
     | Ilist.Cons(Ilist.Atome(x),l) when (SetV.Ord.compare x T.vertex_dummy) = 0 -> l
-    | _ -> failwith "hGraph.ml: Make().scfc_multi"
+    | _ -> failwith "Make().scfc_multi_aux"
     end
 
+  let scfc_multi g root = scfc_multi_aux All g root 
+    
   let scfc_filter_multi g filter root =
-    add_dummy_forward g root;
-    let res = scfc_aux
-      ~filter:(fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then true else filter h)
-      g T.vertex_dummy
-    in
-    rem_dummy g;
-    begin match res with
-    | Ilist.Cons(Ilist.Atome(x),l) when (SetV.Ord.compare x T.vertex_dummy) = 0 -> l
-    | _ -> failwith "hGraph.ml: Make().scfc_multi"
-    end
+    scfc_multi_aux 
+      (Filter (fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then true else filter h))
+      g root
+      
+  let scfc_priority_multi g priority root =
+    scfc_multi_aux 
+      (Priority (fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then 0 else priority h))
+      g root
+
 
   (* *********************************************************************** *)
   (* Min and Max *)

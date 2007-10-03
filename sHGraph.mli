@@ -256,6 +256,14 @@ val cfc_filter_multi :
   'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> bool) -> 'a Sette.t -> 'a list list
   (** idem, but with a filtering of dependencies *)
 
+val cfc_priority_multi :
+  'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> int) -> 'a Sette.t -> 'a list list
+  (** idem, but with a priority of dependencies.
+
+    The priority function [p:'b -> int] filters out hyperedges [b] such that
+    [p b<0], and explores first hyperedges [b] with the highest priority.
+  *)
+
 val scfc : ('a,'b,'c,'d,'e) t -> 'a -> 'a Ilist.t
   (** Decomposition of the graph into Strongly Connected Sub-Components,
 
@@ -269,6 +277,9 @@ val scfc_multi :
 val scfc_filter_multi :
     'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> bool) -> 'a Sette.t -> 'a Ilist.t
   (** idem, but with a filtering of dependencies *)
+val scfc_priority_multi :
+  'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> int) -> 'a Sette.t -> 'a Ilist.t
+  (** idem, but with a priority of dependencies. *)
 
 (*  ====================================================================== *)
 (** {3 Printing} *)
@@ -447,7 +458,6 @@ module type S = sig
     (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> 'aa) ->
     (hedge -> 'b -> pred:vertex array -> succ:vertex array -> 'bb) ->
     ('c -> 'cc) ->
-    ('a,'b,'c) t ->
     ('aa,'bb,'cc) t
 
   (** {3 Copy and Transpose} *)
@@ -490,6 +500,8 @@ module type S = sig
     ('a,'b,'c) t -> SetV.t -> vertex list list
   val cfc_filter_multi :
     ('a,'b,'c) t -> (hedge -> bool) -> SetV.t -> vertex list list
+  val cfc_priority_multi :
+    ('a,'b,'c) t -> (hedge -> int) -> SetV.t -> vertex list list
 
   val scfc :
     ('a,'b,'c) t -> vertex -> vertex Ilist.t
@@ -497,6 +509,8 @@ module type S = sig
     ('a,'b,'c) t -> SetV.t -> vertex Ilist.t
   val scfc_filter_multi :
     ('a,'b,'c) t -> (hedge -> bool) -> SetV.t -> vertex Ilist.t
+  val scfc_priority_multi :
+    ('a,'b,'c) t -> (hedge -> int) -> SetV.t -> vertex Ilist.t
 
   (** {3 Printing} *)
 
