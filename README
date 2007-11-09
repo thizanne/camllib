@@ -1,9 +1,10 @@
 
+First copy Makefile.config.model into Makefile.config and set properly the
+flags (mainly directories).
+
 To compile the library:
 =======================
-make depend
-make all # for bytecode compilation
-make opt # for nativecode compilation
+make all # for bytecode and nativecode compilation
 
 To install the library:
 =======================

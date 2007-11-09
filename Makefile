@@ -1,17 +1,11 @@
+include Makefile.config
+
+#---------------------------------------
+# Directories
+#---------------------------------------
+
 SRCDIR = $(shell pwd)
-
-# where to install
-PREFIX = $(CAMLLIB_INSTALL)
-LIBDIR = $(PREFIX)/lib
-
-CSLC = ocamlc.opt
-CSLOPT = ocamlopt.opt
-CSLDEP = ocamldep
-
-OCAMLDOC = ocamldoc.opt
-
-CSLFLAGS = -g
-CSLOPTFLAGS = -inline 20
+PREFIX = $(CAMLLIB_PREFIX)
 
 FILES = print sette mappe hashhe \
 	setteI mappeI hashheI hashheIB \
@@ -29,51 +23,52 @@ OBJSx = $(FILES:%=%.cmx)
 LIB_TOINSTALL = $(INT) $(FILES:%=%.mli) camllib.cma
 LIB_TOINSTALLx = $(OBJSx) camllib.a camllib.cmxa
 
-all: $(LIB_TOINSTALL)
-opt: $(INT) $(OBJSx) camllib.cmxa
+all: $(LIB_TOINSTALL) $(OBJSx) camllib.cmxa
 
 camllib.cma: $(OBJS)
-	$(CSLC)	-a $(CSLFLAGS) $^ -o $@
+	$(OCAMLC) $(OCAMLFLAGS) -a $^ -o $@
 
 camllib.cmxa: $(OBJSx)
-	$(CSLOPT) -a $(CSLOPTFLAGS) $^ -o $@
+	$(OCAMLOPT) $(OCAMLOPTFLAGS) -a $^ -o $@
 
 install:
-	cp -f $(LIB_TOINSTALL) $(LIB_TOINSTALLx) $(LIBDIR)
+	$(INSTALLd) $(LIB_TOINSTALL) $(LIB_TOINSTALLx) $(PREFIX)/lib
+
 clean:
 	/bin/rm -f *.cm[ioxa] *.o *.a *.cmxa *.html *.ps *.pdf *.dvi *.out
 	/bin/rm -f *.aux *.bbl *.blg *.dvi *.pdf *.log *.toc *.idx *.ilg *.ind ocamldoc*.tex ocamldoc.sty
 	/bin/rm -fr html
+
 distclean: clean
-	(cd $(LIBDIR); rm -f $(LIB_TOINSTALL) $(LIB_TOINSTALLx))
+	(cd $(PREFIX)/lib; rm -f $(LIB_TOINSTALL) $(LIB_TOINSTALLx))
 
 wc: $(SRC)
 	wc $^
 
-tar: $(SRC) Makefile camllib.tex camllib.pdf README 
+tar: $(SRC) Makefile Makefile.config.model camllib.tex camllib.pdf README
 	@echo "*** Archiving source files in ~/camllib.tgz ***"
 	(cd ..; tar zcf $(HOME)/camllib.tgz $(^:%=camllib/%))
 	@echo "*** Files archived in ~/camllib.tgz ***"
 
 # TEX rules
-.PHONY: camllib.dvi camllib.pdf html
+.PHONY: camllib.dvi camllib.pdf html depend
 
 camllib.pdf: camllib.dvi
-	dvipdf camllib.dvi camllib.pdf
+	$(DVIPDF) camllib.dvi camllib.pdf
 
 camllib.dvi: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
-	ocamldoc.opt -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -latex -o ocamldoc.tex $(FILES:%=%.mli) $(FILES:%=%.ml)
-	latex camllib
-	makeindex camllib
-	latex camllib
-	latex camllib
+	$(OCAMLDOC) -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -latex -o ocamldoc.tex $(FILES:%=%.mli) $(FILES:%=%.ml)
+	$(LATEX) camllib
+	$(MAKEINDEX) camllib
+	$(LATEX) camllib
+	$(LATEX) camllib
 
 camllibcode.dvi: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
-	ocamldoc.opt -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -inv-merge-ml-mli -keep-code -latex -o ocamldoc.tex $(FILES:%=%.mli)  $(FILES:%=%.ml)
-	latex camllib
-	makeindex camllib
-	latex camllib
-	latex camllib
+	$(OCAMLDOC) -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -inv-merge-ml-mli -keep-code -latex -o ocamldoc.tex $(FILES:%=%.mli)  $(FILES:%=%.ml)
+	$(LATEX) camllib
+	$(MAKEINDEX) camllib
+	$(LATEX) camllib
+	$(LATEX) camllib
 
 html: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
 	mkdir -p html
@@ -86,22 +81,16 @@ dot: $(INT) $(FILES:%=%.mli)
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .mll .mly .dvi .tex .ps
 
 %.cmi: %.mli
-	$(CSLC) $(CSLFLAGS) -c $(SRCDIR)/$<
+	$(OCAMLC) $(OCAMLFLAGS) -c $(SRCDIR)/$<
 %.cmo: %.ml %.cmi
-	$(CSLC) $(CSLFLAGS) -c $(SRCDIR)/$<
+	$(OCAMLC) $(OCAMLFLAGS) -c $(SRCDIR)/$<
 %.cmx: %.ml %.cmi
-	$(CSLOPT) $(CSLOPTFLAGS) -c $(SRCDIR)/$<
+	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $(SRCDIR)/$<
 
-%.ps: %.dvi
-	/usr/bin/dvips $^ -o
-
-%.pdf: %.ps
-	ps2pdf $^
-
-depend: $(SRC)
-	$(CSLDEP) $^ > Makefile.depend
+depend: 
+	$(OCAMLDEP) $^ > Makefile.depend
 
 Makefile.depend:
-	touch Makefile.depend
+	$(OCAMLDEP) $^ > Makefile.depend
 
-include Makefile.depend
+-include Makefile.depend

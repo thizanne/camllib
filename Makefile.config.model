@@ -1,0 +1,42 @@
+# -*- mode: makefile -*- 
+
+######################################################################
+# Directories
+######################################################################
+
+# Where to *INSTALL* the package ($(CAMLLIB_PREFIX)/lib)
+CAMLLIB_PREFIX = 
+
+# Where to find OCAML ($(CAML_PREFIX)/bin, $(CAML_PREFIX)/lib/ocaml, ...)
+#
+CAML_PREFIX = /usr
+
+######################################################################
+# Tools and Flags
+######################################################################
+
+RANLIB = ranlib
+INSTALL = install
+INSTALLd = install -d
+
+OCAMLC = $(CAML_PREFIX)/bin/ocamlc.opt
+OCAMLOPT = $(CAML_PREFIX)/bin/ocamlopt.opt
+
+# ocamlc compilation flags
+OCAMLFLAGS = -g
+# ocamlopt compilation flags
+OCAMLOPTFLAGS = -inline 20
+
+OCAMLDEP = $(CAML_PREFIX)/bin/ocamldep
+OCAMLLEX = $(CAML_PREFIX)/bin/ocamllex.opt
+OCAMLYACC = $(CAML_PREFIX)/bin/ocamlyacc
+OCAMLDOC = $(CAML_PREFIX)/bin/ocamldoc.opt
+OCAMLMKTOP = $(CAML_PREFIX)/bin/ocamlmktop
+
+LATEX=latex
+DVIPDS=dvips
+DVIPDF=dvipdf
+MAKEINDEX=makeindex
+TEXI2DVI=texi2dvi
+TEXI2HTML=texi2html
+
