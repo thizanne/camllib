@@ -68,6 +68,8 @@ val iter : (bool -> 'a -> unit) -> 'a t -> unit
     a recursive list. *)
 val fold_left : ('a -> bool -> 'b -> 'a) -> 'a -> 'b t -> 'a
   (** Ordinary fold function, from left to right. *)
+val fold_right : (bool -> 'b -> 'a -> 'a) -> 'b t -> 'a -> 'a
+  (** Ordinary fold function, from right to left. *)
 val iter_rec : ('a -> ('a Sette.t) array -> unit) -> 'a t -> unit
   (** Recursive iteration function, rather complex. [iter_rec f ilist] applies
     [f] to each atom of the recursive list, together with the array of

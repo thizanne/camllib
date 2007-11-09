@@ -82,6 +82,18 @@ let fold_left f res ilist =
   in
   parcours res false ilist
 
+let fold_right f ilist res =
+  let rec parcours res flag = function
+      Nil -> res
+    | Cons(Atome(a),reste) ->
+	let nres = parcours res false reste in
+	f flag a res
+    | Cons(List(l),reste) -> 
+	let nres = parcours res false reste in
+	parcours nres true l 
+  in
+  parcours res false ilist
+
 
 let rec rev_append l1 l2 =
   match l1 with
