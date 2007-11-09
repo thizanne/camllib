@@ -26,7 +26,6 @@ let array_exists f tab =
   done;
   !res
 
-
 type ('b,'c) vertex_n = {
   attrvertex : 'c;
   mutable predhedge : 'b Sette.t;
@@ -569,16 +568,16 @@ let cfc_multi_aux priority vertex_dummy hedge_dummy g root =
   | _ -> failwith "cfc_multi_aux"
   end
 
-let cfc_multi vertex_dummy hedge_dummy g root = 
+let cfc_multi vertex_dummy hedge_dummy g root =
   cfc_multi_aux All vertex_dummy hedge_dummy g root
 
 let cfc_filter_multi vertex_dummy hedge_dummy g filter root =
-  cfc_multi_aux 
+  cfc_multi_aux
     (Filter (fun h -> if h = hedge_dummy then true else filter h))
     vertex_dummy hedge_dummy g root
 
 let cfc_priority_multi vertex_dummy hedge_dummy g priority root =
-  cfc_multi_aux 
+  cfc_multi_aux
     (Priority (fun h -> if h = hedge_dummy then 0 else priority h))
     vertex_dummy hedge_dummy g root
 
@@ -721,8 +720,8 @@ let scfc_multi_aux priority vertex_dummy hedge_dummy g root =
   | _ -> failwith "hGraph.ml: scfc_multi"
   end
 
-let scfc_multi vertex_dummy hedge_dummy g root = 
-  scfc_multi_aux All vertex_dummy hedge_dummy g root 
+let scfc_multi vertex_dummy hedge_dummy g root =
+  scfc_multi_aux All vertex_dummy hedge_dummy g root
 
 let scfc_filter_multi vertex_dummy hedge_dummy g filter root =
   scfc_multi_aux
@@ -1255,9 +1254,9 @@ module Make(T : T) : (S with type vertex=T.vertex
 
   let transpose = Obj.magic transpose
 
-(* *********************************************************************** *)
-(* Very internal functions *)
-(* *********************************************************************** *)
+  (* *********************************************************************** *)
+  (* Very internal functions *)
+  (* *********************************************************************** *)
 
   let add_dummy_forward g (root:SetV.t) : unit =
     HashV.add g.vertex T.vertex_dummy
@@ -1416,7 +1415,7 @@ module Make(T : T) : (S with type vertex=T.vertex
     rem_dummy g;
     let (vertices,hedges) = res in
     (SetV.remove T.vertex_dummy vertices,
-    SetH.remove T.hedge_dummy hedges)
+     SetH.remove T.hedge_dummy hedges)
 
   (* *********************************************************************** *)
   (* Strongly Connected Components *)
@@ -1510,16 +1509,16 @@ module Make(T : T) : (S with type vertex=T.vertex
     | _ -> failwith "Make().cfc_multi_aux"
     end
 
-  let cfc_multi g root = 
+  let cfc_multi g root =
     cfc_multi_aux All g root
-    
+
   let cfc_filter_multi g filter root =
-    cfc_multi_aux 
+    cfc_multi_aux
       (Filter (fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then true else filter h))
       g root
-      
+
   let cfc_priority_multi g priority root =
-    cfc_multi_aux 
+    cfc_multi_aux
       (Priority (fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then 0 else priority h))
       g root
 
@@ -1554,7 +1553,7 @@ module Make(T : T) : (S with type vertex=T.vertex
 	  end)
 	  hedge_n.succvertex
       end
-	
+
     and composante sommet =
       let partition = ref Ilist.Nil in
       let succhedges = succhedge g sommet in
@@ -1643,12 +1642,12 @@ module Make(T : T) : (S with type vertex=T.vertex
 	  hedge_n.succvertex
       end
     in
-    
+
     iter_vertex g (fun v _ ~pred:_ ~succ:_ -> HashV.add hash v min_int);
     let partition = ref Ilist.Nil in
     let _ = visit root partition in
     !partition
-  
+
   let scfc g root =
     scfc_aux All g root
 
@@ -1661,15 +1660,15 @@ module Make(T : T) : (S with type vertex=T.vertex
     | _ -> failwith "Make().scfc_multi_aux"
     end
 
-  let scfc_multi g root = scfc_multi_aux All g root 
-    
+  let scfc_multi g root = scfc_multi_aux All g root
+
   let scfc_filter_multi g filter root =
-    scfc_multi_aux 
+    scfc_multi_aux
       (Filter (fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then true else filter h))
       g root
-      
+
   let scfc_priority_multi g priority root =
-    scfc_multi_aux 
+    scfc_multi_aux
       (Priority (fun h -> if SetH.Ord.compare h T.hedge_dummy = 0 then 0 else priority h))
       g root
 
