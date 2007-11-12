@@ -42,6 +42,8 @@ clean:
 	/bin/rm -f *.aux *.bbl *.blg *.dvi *.pdf *.log *.toc *.idx *.ilg *.ind ocamldoc*.tex ocamldoc.sty
 	/bin/rm -fr html
 
+mostlyclean: clean
+
 distclean: clean
 	(cd $(PREFIX)/lib; rm -f $(LIB_TOINSTALL) $(LIB_TOINSTALLx))
 
