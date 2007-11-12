@@ -1,6 +1,11 @@
+About
+=====
+Various abstract datatypes inspired by the standard OCaml library.
 
-First copy Makefile.config.model into Makefile.config and set properly the
-flags (mainly directories).
+To configure
+============
+- copy Makefile.config.model into Makefile.config
+- set properly the flags (mainly directories).
 
 To compile the library:
 =======================
@@ -8,6 +13,5 @@ make all # for bytecode and nativecode compilation
 
 To install the library:
 =======================
-set properly the PREFIX and LIBDIR variable in the Makefile
 make install
 

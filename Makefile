@@ -32,7 +32,10 @@ camllib.cmxa: $(OBJSx)
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -a $^ -o $@
 
 install:
-	$(INSTALLd) $(LIB_TOINSTALL) $(LIB_TOINSTALLx) $(PREFIX)/lib
+	$(INSTALLd) $(PREFIX)/lib
+	for i in $(LIB_TOINSTALL) $(LIB_TOINSTALLx); do \
+		if test -f $$i; then $(INSTALL) $$i $(PREFIX)/lib; fi; \
+	done
 
 clean:
 	/bin/rm -f *.cm[ioxa] *.o *.a *.cmxa *.html *.ps *.pdf *.dvi *.out
