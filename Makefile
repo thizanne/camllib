@@ -12,7 +12,7 @@ FILES = print sette mappe hashhe \
 	dMappe dHashhe \
 	setList multiSetList \
 	ilist sGraph sHGraph symbol union \
-	statistic time rational
+	statistic time rational parse
 
 SRC = $(FILES:%=%.mli) $(FILES:%=%.ml)
 
@@ -41,8 +41,6 @@ clean:
 	/bin/rm -f *.cm[ioxa] *.o *.a *.cmxa *.html *.ps *.pdf *.dvi *.out
 	/bin/rm -f *.aux *.bbl *.blg *.dvi *.pdf *.log *.toc *.idx *.ilg *.ind ocamldoc*.tex ocamldoc.sty
 	/bin/rm -fr html
-
-mostlyclean: clean
 
 distclean: clean
 	(cd $(PREFIX)/lib; rm -f $(LIB_TOINSTALL) $(LIB_TOINSTALLx))
