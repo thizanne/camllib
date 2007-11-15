@@ -37,6 +37,9 @@ install:
 		if test -f $$i; then $(INSTALL) $$i $(PREFIX)/lib; fi; \
 	done
 
+mostlyclean: clean
+	/bin/rm Makefile.depend
+
 clean:
 	/bin/rm -f *.cm[ioxa] *.o *.a *.cmxa *.html *.ps *.pdf *.dvi *.out
 	/bin/rm -f *.aux *.bbl *.blg *.dvi *.pdf *.log *.toc *.idx *.ilg *.ind ocamldoc*.tex ocamldoc.sty
