@@ -11,6 +11,7 @@ val set_info : ('a,'b,'c,'d) t -> 'd -> ('a,'b,'c,'d) t
 
 val succ : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
 val pred : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
+  (** Expensive operation, requires iterations on all vertices *)
 val attrvertex : ('a,'b,'c,'d) t -> 'a -> 'b
 val attredge : ('a,'b,'c,'d) t -> 'a * 'a -> 'c
 val empty : 'd -> ('a,'b,'c,'d) t

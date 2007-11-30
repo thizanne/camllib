@@ -11,7 +11,7 @@ FILES = print sette mappe hashhe \
 	setteI mappeI hashheI hashheIB \
 	dMappe dHashhe \
 	setList multiSetList \
-	ilist sGraph sHGraph symbol union \
+	ilist fGraph1 sHGraph symbol union \
 	statistic time rational parse
 
 SRC = $(FILES:%=%.mli) $(FILES:%=%.ml)
