@@ -4,43 +4,53 @@
 (** {2 Polymorphic version} *)
 (*  ********************************************************************** *)
 
-type ('a,'b,'c) t
+type ('a,'b,'c,'d) t
 
-val succ : ('a,'b,'c) t -> 'a -> 'a Sette.t
-val pred : ('a,'b,'c) t -> 'a -> 'a Sette.t
-val etiq : ('a,'b,'c) t -> 'a -> 'b
-val arete : ('a,'b,'c) t -> 'a * 'a -> 'c
-val empty : ('a,'b,'c) t
-val size : ('a,'b,'c) t -> int
-val is_empty : ('a,'b,'c) t -> bool
-val is_vertex : ('a,'b,'c) t -> 'a -> bool
-val is_edge : ('a,'b,'c) t -> 'a * 'a -> bool
-val vertices : ('a,'b,'c) t -> 'a Sette.t
-val edges : ('a,'b,'c) t -> ('a * 'a) Sette.t
+val info : ('a,'b,'c,'d) t -> 'd
+val set_info : ('a,'b,'c,'d) t -> 'd -> ('a,'b,'c,'d) t 
 
-val map_vertex : ('a,'b,'c) t -> ('a -> 'b -> 'd) -> ('a, 'd, 'c) t
-val map_edge : ('a,'b,'c) t -> ('a * 'a -> 'c -> 'd) -> ('a, 'b, 'd) t
-val iter_vertex : ('a,'b,'c) t -> ('a -> 'b -> 'a Sette.t -> unit) -> unit
-val iter_edge : ('a,'b,'c) t -> (('a * 'a) -> 'c -> unit) -> unit
-val fold_vertex : ('a,'b,'c) t -> 'd -> ('a -> 'b -> 'a Sette.t -> 'd -> 'd) -> 'd
-val fold_edge : ('a,'b,'c) t -> 'd -> ('a * 'a -> 'c -> 'd -> 'd) -> 'd
+val succ : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
+val pred : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
+val attrvertex : ('a,'b,'c,'d) t -> 'a -> 'b
+val attredge : ('a,'b,'c,'d) t -> 'a * 'a -> 'c
+val empty : 'd -> ('a,'b,'c,'d) t
+val size : ('a,'b,'c,'d) t -> int
+val is_empty : ('a,'b,'c,'d) t -> bool
+val is_vertex : ('a,'b,'c,'d) t -> 'a -> bool
+val is_edge : ('a,'b,'c,'d) t -> 'a * 'a -> bool
+val vertices : ('a,'b,'c,'d) t -> 'a Sette.t
+val edges : ('a,'b,'c,'d) t -> ('a * 'a) Sette.t
 
-val add_edge : ('a,'b,'c) t -> 'a * 'a -> 'c -> ('a,'b,'c) t
-val remove_edge : ('a,'b,'c) t -> 'a * 'a -> ('a,'b,'c) t
-val add_vertex : ('a,'b,'c) t -> 'a -> 'b -> ('a,'b,'c) t
-val remove_vertex : ('a,'b,'c) t -> 'a -> ('a,'b,'c) t
-val topological_sort : ('a,'b,'c) t -> 'a -> 'a list
-val topological_sort_multi : 'a -> ('a,'b,'c) t -> 'a Sette.t -> 'a list
-val accessible : ('a,'b,'c) t -> 'a -> 'a Sette.t
-val accessible_multi :
-  'a -> ('a,'b,'c) t -> 'a Sette.t -> 'a Sette.t
-val cfc : ('a,'b,'c) t -> 'a -> 'a list list
-val cfc_multi : 'a -> ('a,'b,'c) t -> 'a Sette.t -> 'a list list
-val scfc : ('a,'b,'c) t -> 'a -> 'a Ilist.t
-val scfc_multi : 'a -> ('a,'b,'c) t -> 'a Sette.t -> 'a Ilist.t
-val min : ('a,'b,'c) t -> 'a Sette.t
-val max : ('a,'b,'c) t -> 'a Sette.t
-val print : (Format.formatter -> 'a -> unit) -> (Format.formatter -> 'b -> unit) -> (Format.formatter -> 'c -> unit) -> Format.formatter -> ('a,'b,'c) t -> unit
+val map_vertex : ('a,'b,'c,'d) t -> ('a -> 'b -> 'e) -> ('a, 'e, 'c, 'd) t
+val map_edge : ('a,'b,'c,'d) t -> ('a * 'a -> 'c -> 'e) -> ('a, 'b, 'e, 'd) t
+val map : 
+  ('a,'b,'c,'d) t ->
+  ('a -> 'b -> 'bb) ->
+  ('a * 'a -> 'c -> 'cc) ->
+  ('d -> 'dd) ->
+  ('a,'bb,'cc,'dd) t
+
+val iter_vertex : ('a,'b,'c,'d) t -> ('a -> 'b -> 'a Sette.t -> unit) -> unit
+val iter_edge : ('a,'b,'c,'d) t -> (('a * 'a) -> 'c -> unit) -> unit
+val fold_vertex : ('a,'b,'c,'d) t -> 'e -> ('a -> 'b -> 'a Sette.t -> 'e -> 'e) -> 'e
+val fold_edge : ('a,'b,'c,'d) t -> 'e -> ('a * 'a -> 'c -> 'e -> 'e) -> 'e
+
+val add_edge : ('a,'b,'c,'d) t -> 'a * 'a -> 'c -> ('a,'b,'c,'d) t
+val remove_edge : ('a,'b,'c,'d) t -> 'a * 'a -> ('a,'b,'c,'d) t
+val add_vertex : ('a,'b,'c,'d) t -> 'a -> 'b -> ('a,'b,'c,'d) t
+val remove_vertex : ('a,'b,'c,'d) t -> 'a -> ('a,'b,'c,'d) t
+val topological_sort : ('a,'b,'c,'d) t -> 'a -> 'a list
+val topological_sort_multi : 'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a list
+val reachable : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
+val reachable_multi :
+  'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a Sette.t
+val cfc : ('a,'b,'c,'d) t -> 'a -> 'a list list
+val cfc_multi : 'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a list list
+val scfc : ('a,'b,'c,'d) t -> 'a -> 'a Ilist.t
+val scfc_multi : 'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a Ilist.t
+val min : ('a,'b,'c,'d) t -> 'a Sette.t
+val max : ('a,'b,'c,'d) t -> 'a Sette.t
+val print : (Format.formatter -> 'a -> unit) -> (Format.formatter -> 'b -> unit) -> (Format.formatter -> 'c -> unit) -> Format.formatter -> ('a,'b,'c,'d) t -> unit
 (*  ********************************************************************** *)
 (** {2 Functor version} *)
 (*  ********************************************************************** *)
@@ -66,47 +76,56 @@ module type S = sig
   module MapE : (Mappe.S with type key=vertex*vertex and module Setkey=SetE)
     (** The Map for edges *)
 	    
-  type ('b,'c) t
+  type ('b,'c,'d) t
     (** The type of graphs, where:
-      - ['b] is the type of vertex attribute (etiq);
-      - ['c] is the type of edge attributes (arete)
+      - ['b] is the type of vertex attribute (attrvertex);
+      - ['c] is the type of edge attributes (attredge)
     *)
     
-  val succ : ('b,'c) t -> vertex -> SetV.t
-  val pred : ('b,'c) t -> vertex -> SetV.t
-  val etiq : ('b,'c) t -> vertex -> 'b
-  val arete : ('b,'c) t -> vertex * vertex -> 'c
-  val empty : ('b,'c) t
-  val size : ('b,'c) t -> int
-  val is_empty : ('b,'c) t -> bool
-  val is_vertex : ('b,'c) t -> vertex -> bool
-  val is_edge : ('b,'c) t -> vertex * vertex -> bool
-  val vertices : ('b,'c) t -> SetV.t
-  val edges : ('b,'c) t -> SetE.t
+  val info : ('b,'c,'d) t -> 'd
+  val set_info : ('b,'c,'d) t -> 'd -> ('b,'c,'d) t 
+  val succ : ('b,'c,'d) t -> vertex -> SetV.t
+  val pred : ('b,'c,'d) t -> vertex -> SetV.t
+  val attrvertex : ('b,'c,'d) t -> vertex -> 'b
+  val attredge : ('b,'c,'d) t -> vertex * vertex -> 'c
+  val empty : 'd -> ('b,'c,'d) t
+  val size : ('b,'c,'d) t -> int
+  val is_empty : ('b,'c,'d) t -> bool
+  val is_vertex : ('b,'c,'d) t -> vertex -> bool
+  val is_edge : ('b,'c,'d) t -> vertex * vertex -> bool
+  val vertices : ('b,'c,'d) t -> SetV.t
+  val edges : ('b,'c,'d) t -> SetE.t
 
-  val map_vertex : ('b,'c) t -> (vertex -> 'b -> 'd) -> ('d, 'c) t
-  val map_edge : ('b,'c) t -> (vertex * vertex -> 'c -> 'd) -> ('b, 'd) t
-  val iter_vertex : ('b,'c) t -> (vertex -> 'b -> SetV.t -> unit) -> unit
-  val iter_edge : ('b,'c) t -> ((vertex * vertex) -> 'c -> unit) -> unit
-  val fold_vertex : ('b,'c) t -> 'd -> (vertex -> 'b -> SetV.t -> 'd -> 'd) -> 'd
-  val fold_edge : ('b,'c) t -> 'd -> (vertex * vertex -> 'c -> 'd -> 'd) -> 'd
+  val map_vertex : ('b,'c,'d) t -> (vertex -> 'b -> 'e) -> ('e, 'c,'d) t
+  val map_edge : ('b,'c,'d) t -> (vertex * vertex -> 'c -> 'e) -> ('b, 'e, 'd) t
+  val map : 
+    ('b,'c,'d) t ->
+    (vertex -> 'b -> 'bb) ->
+    (vertex * vertex -> 'c -> 'cc) ->
+    ('d -> 'dd) ->
+    ('bb,'cc,'dd) t
 
-  val add_edge : ('b,'c) t -> vertex * vertex -> 'c -> ('b,'c) t
-  val remove_edge : ('b,'c) t -> vertex * vertex -> ('b,'c) t
-  val add_vertex : ('b,'c) t -> vertex -> 'b -> ('b,'c) t
-  val remove_vertex : ('b,'c) t -> vertex -> ('b,'c) t
-  val topological_sort : ('b,'c) t -> vertex -> vertex list
-  val topological_sort_multi : vertex -> ('b,'c) t -> SetV.t -> vertex list
-  val accessible : ('b,'c) t -> vertex -> SetV.t
-  val accessible_multi :
-  vertex -> ('b,'c) t -> SetV.t -> SetV.t
-  val cfc : ('b,'c) t -> vertex -> vertex list list
-  val cfc_multi : vertex -> ('b,'c) t -> SetV.t -> vertex list list
-  val scfc : ('b,'c) t -> vertex -> vertex Ilist.t
-  val scfc_multi : vertex -> ('b,'c) t -> SetV.t -> vertex Ilist.t
-  val min : ('b,'c) t -> SetV.t
-  val max : ('b,'c) t -> SetV.t
-  val print : (Format.formatter -> vertex -> unit) -> (Format.formatter -> 'b -> unit) -> (Format.formatter -> 'c -> unit) -> Format.formatter -> ('b,'c) t -> unit
+  val iter_vertex : ('b,'c,'d) t -> (vertex -> 'b -> SetV.t -> unit) -> unit
+  val iter_edge : ('b,'c,'d) t -> ((vertex * vertex) -> 'c -> unit) -> unit
+  val fold_vertex : ('b,'c,'d) t -> 'e -> (vertex -> 'b -> SetV.t -> 'e -> 'e) -> 'e
+  val fold_edge : ('b,'c,'d) t -> 'e -> (vertex * vertex -> 'c -> 'e -> 'e) -> 'e
+
+  val add_edge : ('b,'c,'d) t -> vertex * vertex -> 'c -> ('b,'c,'d) t
+  val remove_edge : ('b,'c,'d) t -> vertex * vertex -> ('b,'c,'d) t
+  val add_vertex : ('b,'c,'d) t -> vertex -> 'b -> ('b,'c,'d) t
+  val remove_vertex : ('b,'c,'d) t -> vertex -> ('b,'c,'d) t
+  val topological_sort : ('b,'c,'d) t -> vertex -> vertex list
+  val topological_sort_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex list
+  val reachable : ('b,'c,'d) t -> vertex -> SetV.t
+  val reachable_multi :
+  vertex -> ('b,'c,'d) t -> SetV.t -> SetV.t
+  val cfc : ('b,'c,'d) t -> vertex -> vertex list list
+  val cfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex list list
+  val scfc : ('b,'c,'d) t -> vertex -> vertex Ilist.t
+  val scfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex Ilist.t
+  val min : ('b,'c,'d) t -> SetV.t
+  val max : ('b,'c,'d) t -> SetV.t
+  val print : (Format.formatter -> vertex -> unit) -> (Format.formatter -> 'b -> unit) -> (Format.formatter -> 'c -> unit) -> Format.formatter -> ('b,'c,'d) t -> unit
 end
 
 module Make(T : T) : (S with type vertex=T.MapV.key

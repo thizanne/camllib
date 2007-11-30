@@ -8,19 +8,23 @@ open Ilist
 
 type ('a,'b) node = {
     succ: 'a Sette.t;
-    etiq: 'b
+    attrvertex: 'b
   }
-type ('a,'b,'c) t = {
+type ('a,'b,'c,'d) t = {
     nodes: ('a, ('a,'b) node) Mappe.t;
-    arcs: ('a*'a,'c) Mappe.t
+    arcs: ('a*'a,'c) Mappe.t;
+    info: 'd;
   } 
+
+let info g = g.info
+let set_info g info = { g with info=info }
 
 let node g n = Mappe.find n g.nodes
 let succ g n = (node g n).succ
-let etiq g n = (node g n).etiq
+let attrvertex g n = (node g n).attrvertex
 
-let arete g arc = Mappe.find arc g.arcs
-let empty = { nodes = Mappe.empty; arcs = Mappe.empty }
+let attredge g arc = Mappe.find arc g.arcs
+let empty info = { nodes = Mappe.empty; arcs = Mappe.empty; info=info }
 let size g = Mappe.fold (fun _ _ n -> n+1) g.nodes 0
 
 let is_empty g = (g.nodes = Mappe.empty)
@@ -32,32 +36,45 @@ let is_edge g arc =
   with Not_found -> false
 
 let vertices g = Mappe.fold (fun v nv set -> Sette.add v set) g.nodes Sette.empty
-let edges g = Mappe.fold (fun arc arete set -> Sette.add arc set) g.arcs Sette.empty
+let edges g = Mappe.fold (fun arc attredge set -> Sette.add arc set) g.arcs Sette.empty
 
 let map_vertex g f = {
   nodes = 
   Mappe.mapi
     (fun v nv -> {
       succ = nv.succ;
-      etiq = f v nv.etiq
+      attrvertex = f v nv.attrvertex
     })
     g.nodes;
-  arcs = g.arcs
+  arcs = g.arcs;
+  info = g.info;
 } 
-let iter_vertex g f = Mappe.iter (fun v nv -> f v nv.etiq nv.succ) g.nodes
-let fold_vertex g r f = Mappe.fold (fun v nv r -> f v nv.etiq nv.succ r) g.nodes r
+let iter_vertex g f = Mappe.iter (fun v nv -> f v nv.attrvertex nv.succ) g.nodes
+let fold_vertex g r f = Mappe.fold (fun v nv r -> f v nv.attrvertex nv.succ r) g.nodes r
 let map_edge g f = {
   nodes = g.nodes;
-  arcs = Mappe.mapi f g.arcs
+  arcs = Mappe.mapi f g.arcs;
+  info = g.info;
 } 
 let iter_edge g f = Mappe.iter f g.arcs
 let fold_edge g r f = Mappe.fold f g.arcs r
+
+let map g mapvertex mapedge mapinfo = {
+  nodes = Mappe.mapi 
+  (fun v node -> { 
+    attrvertex = mapvertex v node.attrvertex;
+    succ = node.succ
+  }) 
+  g.nodes;
+  arcs = Mappe.mapi mapedge g.arcs;
+  info = mapinfo g.info;
+} 
 
 let pred g n = 
   fold_vertex g Sette.empty
     (fun v _ succ set -> if Sette.mem n succ then Sette.add v set else set)
 
-let add_edge g ((a,b) as arc) arete = 
+let add_edge g ((a,b) as arc) attredge = 
   try {
     nodes = begin
       if is_edge g arc then
@@ -65,10 +82,11 @@ let add_edge g ((a,b) as arc) arete =
       else
 	let na = node g a in
 	Mappe.add a 
-	  { succ = Sette.add b na.succ; etiq = na.etiq }
+	  { succ = Sette.add b na.succ; attrvertex = na.attrvertex }
 	  g.nodes
     end;
-    arcs = Mappe.add arc arete g.arcs
+    arcs = Mappe.add arc attredge g.arcs;
+    info = g.info;
   } 
   with Not_found -> failwith "SGraph.add_edge"
 
@@ -77,21 +95,24 @@ let remove_edge g ((a,b) as arc) =
     nodes = begin
       let na = node g a in
       Mappe.add a 
-	{ succ = Sette.remove b na.succ; etiq = na.etiq }
+	{ succ = Sette.remove b na.succ; attrvertex = na.attrvertex }
 	g.nodes
     end;
-    arcs = Mappe.remove arc g.arcs
+    arcs = Mappe.remove arc g.arcs;
+    info = g.info;
   } 
   with Not_found -> failwith "SGraph.remove_edge"
       
-let add_vertex g v etiq = 
+let add_vertex g v attrvertex = 
   try
     let anode = Mappe.find v g.nodes in 
-    { nodes = Mappe.add v { succ = anode.succ; etiq = etiq } g.nodes;
-      arcs = g.arcs } 
+    { nodes = Mappe.add v { succ = anode.succ; attrvertex = attrvertex } g.nodes;
+    arcs = g.arcs;
+    info = g.info; } 
   with Not_found -> 
-    { nodes = Mappe.add v { succ = Sette.empty; etiq = etiq } g.nodes;
-      arcs = g.arcs } 
+    { nodes = Mappe.add v { succ = Sette.empty; attrvertex = attrvertex } g.nodes;
+    arcs = g.arcs;
+    info = g.info; } 
 
 let remove_vertex g v = 
   try
@@ -102,7 +123,8 @@ let remove_vertex g v =
 	Sette.fold
 	  (fun succ arcs -> Mappe.remove (v,succ) arcs)
 	  nv.succ
-	  g.arcs }
+	  g.arcs;
+	info = g.info; }
     in
     Sette.fold
       (fun p g -> remove_edge g (p,v))
@@ -112,30 +134,30 @@ let remove_vertex g v =
     raise (Failure "SGraph.remove_vertex")
 
 (* fonctions auxiliaires *)
-let squelette make_etiq g =
+let squelette make_attrvertex g =
   Mappe.map 
-    (fun n -> { succ = n.succ; etiq = make_etiq() })
+    (fun n -> { succ = n.succ; attrvertex = make_attrvertex() })
     g.nodes
 
-let squelette_multi root make_etiq g sroot =
+let squelette_multi root make_attrvertex g sroot =
   Mappe.add 
     root
     { succ = sroot;
-      etiq = make_etiq() }
+      attrvertex = make_attrvertex() }
     (Mappe.map
        (fun n -> { 
 	 succ = n.succ; 
-	 etiq = make_etiq() })
+	 attrvertex = make_attrvertex() })
        g.nodes)
 
 let topological_sort_aux root nodes =
   let rec visit v res = 
     let nv = Mappe.find v nodes in
-    if !(nv.etiq) then 
+    if !(nv.attrvertex) then 
       res
     else
       begin
-	nv.etiq := true;
+	nv.attrvertex := true;
 	v :: (Sette.fold visit nv.succ res)
       end
   in
@@ -151,19 +173,19 @@ let topological_sort_multi root g sroot =
 
 
 (* retourne les sommets inaccessibles a partir d'un sommet *)
-let accessible_aux root nodes g =
+let reachable_aux root nodes g =
   let rec visit v =
     let nv = Mappe.find v nodes in
-    if not !(nv.etiq) then
+    if not !(nv.attrvertex) then
       begin
-	nv.etiq := true;
+	nv.attrvertex := true;
 	Sette.iter visit nv.succ
       end
   in
   visit root ;
   Mappe.fold
     (begin fun v nv removed ->
-      if !((Mappe.find v nodes).etiq) then
+      if !((Mappe.find v nodes).attrvertex) then
 	removed
       else
 	Sette.add v removed;
@@ -171,13 +193,13 @@ let accessible_aux root nodes g =
     g.nodes
     Sette.empty
 
-let accessible g root =
+let reachable g root =
   let nodes = squelette (fun () -> ref false) g in
-  accessible_aux root nodes g
+  reachable_aux root nodes g
 
-let accessible_multi root g sroot = 
+let reachable_multi root g sroot = 
   let nodes = squelette_multi root (fun () -> ref false) g sroot in
-  accessible_aux root nodes g 
+  reachable_aux root nodes g 
 
 (* composantes fortement connexes *)
 let cfc_aux root nodes = 
@@ -189,24 +211,24 @@ let cfc_aux root nodes =
     Stack.push sommet pile;
     let node = (Mappe.find sommet nodes) in
     incr num;
-    node.etiq := !num;
+    node.attrvertex := !num;
     let head = 
       Sette.fold
 	(fun succ head ->
-	  let dfn = !((Mappe.find succ nodes).etiq) in
+	  let dfn = !((Mappe.find succ nodes).attrvertex) in
 	  let m = if dfn=min_int then (visit succ) else dfn in
 	  Pervasives.min m head)
 	node.succ
 	!num
     in
-    if head = !(node.etiq) then 
+    if head = !(node.attrvertex) then 
       begin
 	let element = ref (Stack.pop pile) in
 	let composante = ref [!element] in
-	  (Mappe.find !element nodes).etiq := max_int;
+	  (Mappe.find !element nodes).attrvertex := max_int;
 	  while !element <> sommet do
 	    element := Stack.pop pile;
-	    (Mappe.find !element nodes).etiq := max_int;
+	    (Mappe.find !element nodes).attrvertex := max_int;
 	    composante := !element :: !composante
 	  done;
 	partition := !composante :: !partition
@@ -234,7 +256,7 @@ let scfc_aux root nodes =
     let partition = ref Nil in
     Sette.iter
       (function x -> 
-	if !((Mappe.find x nodes).etiq) = min_int then begin
+	if !((Mappe.find x nodes).attrvertex) = min_int then begin
 	  ignore (visit x partition)
 	end)
       (Mappe.find sommet nodes).succ;
@@ -244,11 +266,11 @@ let scfc_aux root nodes =
     Stack.push sommet pile;
     incr num;
     let node = (Mappe.find sommet nodes) in
-    node.etiq := !num;
+    node.attrvertex := !num;
     let head = ref !num and loop = ref false in
     (Sette.iter
        (fun succ ->
-	 let dfn = !((Mappe.find succ nodes).etiq) in
+	 let dfn = !((Mappe.find succ nodes).attrvertex) in
 	 let m =
 	   if dfn=min_int 
 	   then (visit succ partition)
@@ -256,14 +278,14 @@ let scfc_aux root nodes =
 	 in
 	 if m <= !head then begin loop := true; head := m end)
        node.succ);
-    if !head = !(node.etiq) then 
+    if !head = !(node.attrvertex) then 
       begin
-	node.etiq := max_int;
+	node.attrvertex := max_int;
 	let element = ref (Stack.pop pile) in
 	if !loop then 
 	  begin
 	    while !element <> sommet do
-	      (Mappe.find !element nodes).etiq := min_int;
+	      (Mappe.find !element nodes).attrvertex := min_int;
 	      element := Stack.pop pile
 	    done;
 	    partition := Cons(List(composante sommet),!partition )
@@ -293,12 +315,12 @@ let min g =
   Mappe.iter
     (begin fun v nv ->
       Sette.iter
-	(fun succ -> let flag = (Mappe.find succ marks).etiq in flag := false)
+	(fun succ -> let flag = (Mappe.find succ marks).attrvertex in flag := false)
 	nv.succ
     end)
     marks;
   Mappe.fold
-    (fun v nv res -> if !(nv.etiq) then Sette.add v res else res)
+    (fun v nv res -> if !(nv.attrvertex) then Sette.add v res else res)
     marks
     Sette.empty
 let max g =
@@ -308,11 +330,11 @@ let max g =
     g.nodes
     Sette.empty
 
-let print print_vertex print_etiq print_arete formatter g = 
+let print print_vertex print_attrvertex print_attredge formatter g = 
   let print v nv =
-    fprintf formatter "v = %a, @[<hv>etiq = %a,@ succ = %a@]"
+    fprintf formatter "v = %a, @[<hv>attrvertex = %a,@ succ = %a@]"
       print_vertex v
-      print_etiq nv.etiq
+      print_attrvertex nv.attrvertex
       (Sette.print print_vertex) nv.succ
   in
   fprintf formatter "[ @[<hv>";
@@ -322,11 +344,11 @@ let print print_vertex print_etiq print_arete formatter g =
   fprintf formatter "@]]@ ";
   fprintf formatter "[ @[<hv>";
   (Mappe.iter
-     (fun (a,b) arete ->
+     (fun (a,b) attredge ->
        fprintf formatter "@[{(%a,%a),%a};@]@ "
 	 print_vertex a
 	 print_vertex b
-	 print_arete arete)
+	 print_attredge attredge)
      g.arcs);
   fprintf formatter "@]]";
   ()
@@ -356,47 +378,55 @@ module type S = sig
   module MapE : (Mappe.S with type key=vertex*vertex and module Setkey=SetE)
     (** The Map for edges *)
 	    
-  type ('b,'c) t
+  type ('b,'c,'d) t
     (** The type of graphs, where:
-      - ['b] is the type of vertex attribute (etiq);
-      - ['c] is the type of edge attributes (arete)
+      - ['b] is the type of vertex attribute (attrvertex);
+      - ['c] is the type of edge attributes (attredge)
     *)
     
-  val succ : ('b,'c) t -> vertex -> SetV.t
-  val pred : ('b,'c) t -> vertex -> SetV.t
-  val etiq : ('b,'c) t -> vertex -> 'b
-  val arete : ('b,'c) t -> vertex * vertex -> 'c
-  val empty : ('b,'c) t
-  val size : ('b,'c) t -> int
-  val is_empty : ('b,'c) t -> bool
-  val is_vertex : ('b,'c) t -> vertex -> bool
-  val is_edge : ('b,'c) t -> vertex * vertex -> bool
-  val vertices : ('b,'c) t -> SetV.t
-  val edges : ('b,'c) t -> SetE.t
+  val info : ('b,'c,'d) t -> 'd
+  val set_info : ('b,'c,'d) t -> 'd -> ('b,'c,'d) t 
+  val succ : ('b,'c,'d) t -> vertex -> SetV.t
+  val pred : ('b,'c,'d) t -> vertex -> SetV.t
+  val attrvertex : ('b,'c,'d) t -> vertex -> 'b
+  val attredge : ('b,'c,'d) t -> vertex * vertex -> 'c
+  val empty : 'd -> ('b,'c,'d) t
+  val size : ('b,'c,'d) t -> int
+  val is_empty : ('b,'c,'d) t -> bool
+  val is_vertex : ('b,'c,'d) t -> vertex -> bool
+  val is_edge : ('b,'c,'d) t -> vertex * vertex -> bool
+  val vertices : ('b,'c,'d) t -> SetV.t
+  val edges : ('b,'c,'d) t -> SetE.t
 
-  val map_vertex : ('b,'c) t -> (vertex -> 'b -> 'd) -> ('d, 'c) t
-  val map_edge : ('b,'c) t -> (vertex * vertex -> 'c -> 'd) -> ('b, 'd) t
-  val iter_vertex : ('b,'c) t -> (vertex -> 'b -> SetV.t -> unit) -> unit
-  val iter_edge : ('b,'c) t -> ((vertex * vertex) -> 'c -> unit) -> unit
-  val fold_vertex : ('b,'c) t -> 'd -> (vertex -> 'b -> SetV.t -> 'd -> 'd) -> 'd
-  val fold_edge : ('b,'c) t -> 'd -> (vertex * vertex -> 'c -> 'd -> 'd) -> 'd
+  val map_vertex : ('b,'c,'d) t -> (vertex -> 'b -> 'e) -> ('e, 'c,'d) t
+  val map_edge : ('b,'c,'d) t -> (vertex * vertex -> 'c -> 'e) -> ('b, 'e, 'd) t
+  val map : 
+    ('b,'c,'d) t ->
+    (vertex -> 'b -> 'bb) ->
+    (vertex * vertex -> 'c -> 'cc) ->
+    ('d -> 'dd) ->
+    ('bb,'cc,'dd) t
+  val iter_vertex : ('b,'c,'d) t -> (vertex -> 'b -> SetV.t -> unit) -> unit
+  val iter_edge : ('b,'c,'d) t -> ((vertex * vertex) -> 'c -> unit) -> unit
+  val fold_vertex : ('b,'c,'d) t -> 'e -> (vertex -> 'b -> SetV.t -> 'e -> 'e) -> 'e
+  val fold_edge : ('b,'c,'d) t -> 'e -> (vertex * vertex -> 'c -> 'e -> 'e) -> 'e
 
-  val add_edge : ('b,'c) t -> vertex * vertex -> 'c -> ('b,'c) t
-  val remove_edge : ('b,'c) t -> vertex * vertex -> ('b,'c) t
-  val add_vertex : ('b,'c) t -> vertex -> 'b -> ('b,'c) t
-  val remove_vertex : ('b,'c) t -> vertex -> ('b,'c) t
-  val topological_sort : ('b,'c) t -> vertex -> vertex list
-  val topological_sort_multi : vertex -> ('b,'c) t -> SetV.t -> vertex list
-  val accessible : ('b,'c) t -> vertex -> SetV.t
-  val accessible_multi :
-  vertex -> ('b,'c) t -> SetV.t -> SetV.t
-  val cfc : ('b,'c) t -> vertex -> vertex list list
-  val cfc_multi : vertex -> ('b,'c) t -> SetV.t -> vertex list list
-  val scfc : ('b,'c) t -> vertex -> vertex Ilist.t
-  val scfc_multi : vertex -> ('b,'c) t -> SetV.t -> vertex Ilist.t
-  val min : ('b,'c) t -> SetV.t
-  val max : ('b,'c) t -> SetV.t
-  val print : (Format.formatter -> vertex -> unit) -> (Format.formatter -> 'b -> unit) -> (Format.formatter -> 'c -> unit) -> Format.formatter -> ('b,'c) t -> unit
+  val add_edge : ('b,'c,'d) t -> vertex * vertex -> 'c -> ('b,'c,'d) t
+  val remove_edge : ('b,'c,'d) t -> vertex * vertex -> ('b,'c,'d) t
+  val add_vertex : ('b,'c,'d) t -> vertex -> 'b -> ('b,'c,'d) t
+  val remove_vertex : ('b,'c,'d) t -> vertex -> ('b,'c,'d) t
+  val topological_sort : ('b,'c,'d) t -> vertex -> vertex list
+  val topological_sort_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex list
+  val reachable : ('b,'c,'d) t -> vertex -> SetV.t
+  val reachable_multi :
+  vertex -> ('b,'c,'d) t -> SetV.t -> SetV.t
+  val cfc : ('b,'c,'d) t -> vertex -> vertex list list
+  val cfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex list list
+  val scfc : ('b,'c,'d) t -> vertex -> vertex Ilist.t
+  val scfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex Ilist.t
+  val min : ('b,'c,'d) t -> SetV.t
+  val max : ('b,'c,'d) t -> SetV.t
+  val print : (Format.formatter -> vertex -> unit) -> (Format.formatter -> 'b -> unit) -> (Format.formatter -> 'c -> unit) -> Format.formatter -> ('b,'c,'d) t -> unit
 end
 
 module Make(T : T) : (S with type vertex=T.MapV.key
@@ -415,19 +445,22 @@ struct
 
   type 'b node = {
     succ: SetV.t;
-    etiq: 'b
+    attrvertex: 'b
   }
-  type ('b,'c) t = {
+  type ('b,'c,'d) t = {
     nodes: 'b node MapV.t;
-    arcs: 'c MapE.t
+    arcs: 'c MapE.t;
+    info : 'd;
   }
   
+  let info g = g.info
+  let set_info g info = { g with info=info }
   let node g n = MapV.find n g.nodes
   let succ g n = (node g n).succ
-  let etiq g n = (node g n).etiq
+  let attrvertex g n = (node g n).attrvertex
   
-  let arete g arc = MapE.find arc g.arcs
-  let empty = { nodes = MapV.empty; arcs = MapE.empty }
+  let attredge g arc = MapE.find arc g.arcs
+  let empty info = { nodes = MapV.empty; arcs = MapE.empty; info = info }
   let size g = MapV.fold (fun _ _ n -> n+1) g.nodes 0
   
   let is_empty g = (g.nodes = MapV.empty)
@@ -439,43 +472,57 @@ struct
     with Not_found -> false
   
   let vertices g = MapV.fold (fun v nv set -> SetV.add v set) g.nodes SetV.empty
-  let edges g = MapE.fold (fun arc arete set -> SetE.add arc set) g.arcs SetE.empty
+  let edges g = MapE.fold (fun arc attredge set -> SetE.add arc set) g.arcs SetE.empty
   
   let map_vertex g f = {
     nodes = 
     MapV.mapi
       (fun v nv -> {
         succ = nv.succ;
-        etiq = f v nv.etiq
+        attrvertex = f v nv.attrvertex
       })
       g.nodes;
-    arcs = g.arcs
+    arcs = g.arcs;
+    info = g.info;
   } 
-  let iter_vertex g f = MapV.iter (fun v nv -> f v nv.etiq nv.succ) g.nodes
-  let fold_vertex g r f = MapV.fold (fun v nv r -> f v nv.etiq nv.succ r) g.nodes r
+  let iter_vertex g f = MapV.iter (fun v nv -> f v nv.attrvertex nv.succ) g.nodes
+  let fold_vertex g r f = MapV.fold (fun v nv r -> f v nv.attrvertex nv.succ r) g.nodes r
   let map_edge g f = {
     nodes = g.nodes;
-    arcs = MapE.mapi f g.arcs
+    arcs = MapE.mapi f g.arcs;
+    info = g.info;
   } 
   let iter_edge g f = MapE.iter f g.arcs
   let fold_edge g r f = MapE.fold f g.arcs r
   
+  let map g mapvertex mapedge mapinfo = {
+    nodes = MapV.mapi  
+    (fun v node -> { 
+      attrvertex = mapvertex v node.attrvertex;
+      succ = node.succ
+    }) 
+    g.nodes;
+    arcs = MapE.mapi mapedge g.arcs;
+    info = mapinfo g.info;
+  } 
+
   let pred g n = 
     fold_vertex g SetV.empty
       (fun v _ succ set -> if SetV.mem n succ then SetV.add v set else set)
   
-  let add_edge g ((a,b) as arc) arete = 
+  let add_edge g ((a,b) as arc) attredge = 
     try {
       nodes = begin
         if is_edge g arc then
-  	g.nodes
-        else
-  	let na = node g a in
-  	MapV.add a 
-  	  { succ = SetV.add b na.succ; etiq = na.etiq }
   	  g.nodes
+        else
+  	  let na = node g a in
+  	  MapV.add a 
+  	    { succ = SetV.add b na.succ; attrvertex = na.attrvertex }
+  	    g.nodes
       end;
-      arcs = MapE.add arc arete g.arcs
+      arcs = MapE.add arc attredge g.arcs;
+      info = g.info;
     } 
     with Not_found -> failwith "SGraph.add_edge"
   
@@ -484,21 +531,24 @@ struct
       nodes = begin
         let na = node g a in
         MapV.add a 
-  	{ succ = SetV.remove b na.succ; etiq = na.etiq }
-  	g.nodes
+  	  { succ = SetV.remove b na.succ; attrvertex = na.attrvertex }
+  	  g.nodes
       end;
-      arcs = MapE.remove arc g.arcs
+      arcs = MapE.remove arc g.arcs;
+      info = g.info;
     } 
     with Not_found -> failwith "SGraph.remove_edge"
         
-  let add_vertex g v etiq = 
+  let add_vertex g v attrvertex = 
     try
       let anode = MapV.find v g.nodes in 
-      { nodes = MapV.add v { succ = anode.succ; etiq = etiq } g.nodes;
-        arcs = g.arcs } 
+      { nodes = MapV.add v { succ = anode.succ; attrvertex = attrvertex } g.nodes;
+      arcs = g.arcs;
+      info = g.info; } 
     with Not_found -> 
-      { nodes = MapV.add v { succ = SetV.empty; etiq = etiq } g.nodes;
-        arcs = g.arcs } 
+      { nodes = MapV.add v { succ = SetV.empty; attrvertex = attrvertex } g.nodes;
+      arcs = g.arcs;
+      info = g.info; } 
   
   let remove_vertex g v = 
     try
@@ -506,10 +556,11 @@ struct
       let g = 
         { nodes = MapV.remove v g.nodes;
   	arcs = 
-  	SetV.fold
-  	  (fun succ arcs -> MapE.remove (v,succ) arcs)
-  	  nv.succ
-  	  g.arcs }
+  	  SetV.fold
+  	    (fun succ arcs -> MapE.remove (v,succ) arcs)
+  	    nv.succ
+  	    g.arcs;
+	info = g.info; }
       in
       SetV.fold
         (fun p g -> remove_edge g (p,v))
@@ -519,30 +570,30 @@ struct
       raise (Failure "SGraph.remove_vertex")
   
   (* fonctions auxiliaires *)
-  let squelette make_etiq g =
+  let squelette make_attrvertex g =
     MapV.map 
-      (fun n -> { succ = n.succ; etiq = make_etiq() })
+      (fun n -> { succ = n.succ; attrvertex = make_attrvertex() })
       g.nodes
   
-  let squelette_multi root make_etiq g sroot =
+  let squelette_multi root make_attrvertex g sroot =
     MapV.add 
       root
       { succ = sroot;
-        etiq = make_etiq() }
+        attrvertex = make_attrvertex() }
       (MapV.map
          (fun n -> { 
   	 succ = n.succ; 
-  	 etiq = make_etiq() })
+  	 attrvertex = make_attrvertex() })
          g.nodes)
   
   let topological_sort_aux root nodes =
     let rec visit v res = 
       let nv = MapV.find v nodes in
-      if !(nv.etiq) then 
+      if !(nv.attrvertex) then 
         res
       else
         begin
-  	nv.etiq := true;
+  	nv.attrvertex := true;
   	v :: (SetV.fold visit nv.succ res)
         end
     in
@@ -558,19 +609,19 @@ struct
   
   
   (* retourne les sommets inaccessibles a partir d'un sommet *)
-  let accessible_aux root nodes g =
+  let reachable_aux root nodes g =
     let rec visit v =
       let nv = MapV.find v nodes in
-      if not !(nv.etiq) then
+      if not !(nv.attrvertex) then
         begin
-  	nv.etiq := true;
+  	nv.attrvertex := true;
   	SetV.iter visit nv.succ
         end
     in
     visit root ;
     MapV.fold
       (begin fun v nv removed ->
-        if !((MapV.find v nodes).etiq) then
+        if !((MapV.find v nodes).attrvertex) then
   	removed
         else
   	SetV.add v removed;
@@ -578,13 +629,13 @@ struct
       g.nodes
       SetV.empty
   
-  let accessible g root =
+  let reachable g root =
     let nodes = squelette (fun () -> ref false) g in
-    accessible_aux root nodes g
+    reachable_aux root nodes g
   
-  let accessible_multi root g sroot = 
+  let reachable_multi root g sroot = 
     let nodes = squelette_multi root (fun () -> ref false) g sroot in
-    accessible_aux root nodes g 
+    reachable_aux root nodes g 
   
   (* composantes fortement connexes *)
   let cfc_aux root nodes = 
@@ -596,24 +647,24 @@ struct
       Stack.push sommet pile;
       let node = (MapV.find sommet nodes) in
       incr num;
-      node.etiq := !num;
+      node.attrvertex := !num;
       let head = 
         SetV.fold
   	(fun succ head ->
-  	  let dfn = !((MapV.find succ nodes).etiq) in
+  	  let dfn = !((MapV.find succ nodes).attrvertex) in
   	  let m = if dfn=min_int then (visit succ) else dfn in
   	  Pervasives.min m head)
   	node.succ
   	!num
       in
-      if head = !(node.etiq) then 
+      if head = !(node.attrvertex) then 
         begin
   	let element = ref (Stack.pop pile) in
   	let composante = ref [!element] in
-  	  (MapV.find !element nodes).etiq := max_int;
+  	  (MapV.find !element nodes).attrvertex := max_int;
   	  while !element <> sommet do
   	    element := Stack.pop pile;
-  	    (MapV.find !element nodes).etiq := max_int;
+  	    (MapV.find !element nodes).attrvertex := max_int;
   	    composante := !element :: !composante
   	  done;
   	partition := !composante :: !partition
@@ -641,7 +692,7 @@ struct
       let partition = ref Nil in
       SetV.iter
         (function x -> 
-  	if !((MapV.find x nodes).etiq) = min_int then begin
+  	if !((MapV.find x nodes).attrvertex) = min_int then begin
   	  ignore (visit x partition)
   	end)
         (MapV.find sommet nodes).succ;
@@ -651,11 +702,11 @@ struct
       Stack.push sommet pile;
       incr num;
       let node = (MapV.find sommet nodes) in
-      node.etiq := !num;
+      node.attrvertex := !num;
       let head = ref !num and loop = ref false in
       (SetV.iter
          (fun succ ->
-  	 let dfn = !((MapV.find succ nodes).etiq) in
+  	 let dfn = !((MapV.find succ nodes).attrvertex) in
   	 let m =
   	   if dfn=min_int 
   	   then (visit succ partition)
@@ -663,14 +714,14 @@ struct
   	 in
   	 if m <= !head then begin loop := true; head := m end)
          node.succ);
-      if !head = !(node.etiq) then 
+      if !head = !(node.attrvertex) then 
         begin
-  	node.etiq := max_int;
+  	node.attrvertex := max_int;
   	let element = ref (Stack.pop pile) in
   	if !loop then 
   	  begin
   	    while !element <> sommet do
-  	      (MapV.find !element nodes).etiq := min_int;
+  	      (MapV.find !element nodes).attrvertex := min_int;
   	      element := Stack.pop pile
   	    done;
   	    partition := Cons(List(composante sommet),!partition )
@@ -700,12 +751,12 @@ struct
     MapV.iter
       (begin fun v nv ->
         SetV.iter
-  	(fun succ -> let flag = (MapV.find succ marks).etiq in flag := false)
+  	(fun succ -> let flag = (MapV.find succ marks).attrvertex in flag := false)
   	nv.succ
       end)
       marks;
     MapV.fold
-      (fun v nv res -> if !(nv.etiq) then SetV.add v res else res)
+      (fun v nv res -> if !(nv.attrvertex) then SetV.add v res else res)
       marks
       SetV.empty
   let max g =
@@ -715,11 +766,11 @@ struct
       g.nodes
       SetV.empty
   
-  let print print_vertex print_etiq print_arete formatter g = 
+  let print print_vertex print_attrvertex print_attredge formatter g = 
     let print v nv =
-      fprintf formatter "v = %a, @[<hv>etiq = %a,@ succ = %a@]"
+      fprintf formatter "v = %a, @[<hv>attrvertex = %a,@ succ = %a@]"
         print_vertex v
-        print_etiq nv.etiq
+        print_attrvertex nv.attrvertex
         (SetV.print print_vertex) nv.succ
     in
     fprintf formatter "[ @[<hv>";
@@ -729,11 +780,11 @@ struct
     fprintf formatter "@]]@ ";
     fprintf formatter "[ @[<hv>";
     (MapE.iter
-       (fun (a,b) arete ->
+       (fun (a,b) attredge ->
          fprintf formatter "@[{(%a,%a),%a};@]@ "
   	 print_vertex a
   	 print_vertex b
-  	 print_arete arete)
+  	 print_attredge attredge)
        g.arcs);
     fprintf formatter "@]]";
     ()
