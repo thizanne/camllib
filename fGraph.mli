@@ -1,4 +1,4 @@
-(** Directed graphs, functional API, with one-way information maintained, *)
+(** Directed graphs, functional API, with two-way information maintained, *)
 
 (*  ********************************************************************** *)
 (** {2 Polymorphic version} *)
@@ -11,7 +11,6 @@ val set_info : ('a,'b,'c,'d) t -> 'd -> ('a,'b,'c,'d) t
 
 val succ : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
 val pred : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
-  (** Expensive operation, requires iterations on all vertices *)
 val attrvertex : ('a,'b,'c,'d) t -> 'a -> 'b
 val attredge : ('a,'b,'c,'d) t -> 'a * 'a -> 'c
 val empty : 'd -> ('a,'b,'c,'d) t
@@ -22,25 +21,31 @@ val is_edge : ('a,'b,'c,'d) t -> 'a * 'a -> bool
 val vertices : ('a,'b,'c,'d) t -> 'a Sette.t
 val edges : ('a,'b,'c,'d) t -> ('a * 'a) Sette.t
 
-val map_vertex : ('a,'b,'c,'d) t -> ('a -> 'b -> 'e) -> ('a, 'e, 'c, 'd) t
+val map_vertex : ('a,'b,'c,'d) t -> ('a -> 'b -> pred:'a Sette.t -> succ:'a Sette.t -> 'e) -> ('a, 'e, 'c, 'd) t
 val map_edge : ('a,'b,'c,'d) t -> ('a * 'a -> 'c -> 'e) -> ('a, 'b, 'e, 'd) t
 val map : 
   ('a,'b,'c,'d) t ->
-  ('a -> 'b -> 'bb) ->
+  ('a -> 'b -> pred:'a Sette.t -> succ:'a Sette.t -> 'bb) ->
   ('a * 'a -> 'c -> 'cc) ->
   ('d -> 'dd) ->
   ('a,'bb,'cc,'dd) t
 
-val iter_vertex : ('a,'b,'c,'d) t -> ('a -> 'b -> 'a Sette.t -> unit) -> unit
+val transpose : 
+  ('a,'b,'c,'d) t ->
+  ('a -> 'b -> pred:'a Sette.t -> succ:'a Sette.t -> 'bb) ->
+  ('a * 'a -> 'c -> 'cc) ->
+  ('d -> 'dd) ->
+  ('a,'bb,'cc,'dd) t
+
+val iter_vertex : ('a,'b,'c,'d) t -> ('a -> 'b -> pred:'a Sette.t -> succ:'a Sette.t -> unit) -> unit
 val iter_edge : ('a,'b,'c,'d) t -> (('a * 'a) -> 'c -> unit) -> unit
-val fold_vertex : ('a,'b,'c,'d) t -> 'e -> ('a -> 'b -> 'a Sette.t -> 'e -> 'e) -> 'e
+val fold_vertex : ('a,'b,'c,'d) t -> 'e -> ('a -> 'b -> pred:'a Sette.t -> succ:'a Sette.t -> 'e -> 'e) -> 'e
 val fold_edge : ('a,'b,'c,'d) t -> 'e -> ('a * 'a -> 'c -> 'e -> 'e) -> 'e
 
 val add_edge : ('a,'b,'c,'d) t -> 'a * 'a -> 'c -> ('a,'b,'c,'d) t
 val remove_edge : ('a,'b,'c,'d) t -> 'a * 'a -> ('a,'b,'c,'d) t
 val add_vertex : ('a,'b,'c,'d) t -> 'a -> 'b -> ('a,'b,'c,'d) t
 val remove_vertex : ('a,'b,'c,'d) t -> 'a -> ('a,'b,'c,'d) t
-  (** Expensive operation, requires iterations on all vertices *)
 val topological_sort : ('a,'b,'c,'d) t -> 'a -> 'a list
 val topological_sort_multi : 'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a list
 val reachable : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
@@ -52,7 +57,26 @@ val scfc : ('a,'b,'c,'d) t -> 'a -> 'a Ilist.t
 val scfc_multi : 'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a Ilist.t
 val min : ('a,'b,'c,'d) t -> 'a Sette.t
 val max : ('a,'b,'c,'d) t -> 'a Sette.t
-val print : (Format.formatter -> 'a -> unit) -> (Format.formatter -> 'b -> unit) -> (Format.formatter -> 'c -> unit) -> (Format.formatter -> 'd -> unit) -> Format.formatter -> ('a,'b,'c,'d) t -> unit
+val print : 
+  (Format.formatter -> 'a -> unit) -> 
+  (Format.formatter -> 'b -> unit) -> 
+  (Format.formatter -> 'c -> unit) -> 
+  (Format.formatter -> 'd -> unit) -> 
+   Format.formatter -> ('a,'b,'c,'d) t -> unit
+
+type ('a,'b) nodezz = {
+    succzz: 'a Sette.t;
+    predzz: 'a Sette.t;
+    attrvertexzz: 'b
+  }
+type ('a,'b,'c,'d) tzz = {
+    nodeszz: ('a, ('a,'b) nodezz) Mappe.t;
+    arcszz: ('a*'a,'c) Mappe.t;
+    infozz: 'd;
+  }
+val repr : ('a,'b,'c,'d) t -> ('a,'b,'c,'d)  tzz
+val obj : ('a,'b,'c,'d) tzz -> ('a,'b,'c,'d) t
+
 (*  ********************************************************************** *)
 (** {2 Functor version} *)
 (*  ********************************************************************** *)
@@ -98,20 +122,24 @@ module type S = sig
   val vertices : ('b,'c,'d) t -> SetV.t
   val edges : ('b,'c,'d) t -> SetE.t
 
-  val map_vertex : ('b,'c,'d) t -> (vertex -> 'b -> 'e) -> ('e, 'c,'d) t
+  val map_vertex : ('b,'c,'d) t -> (vertex -> 'b -> pred:SetV.t -> succ:SetV.t -> 'e) -> ('e, 'c,'d) t
   val map_edge : ('b,'c,'d) t -> (vertex * vertex -> 'c -> 'e) -> ('b, 'e, 'd) t
-  val map : 
+  val map :
     ('b,'c,'d) t ->
-    (vertex -> 'b -> 'bb) ->
+    (vertex -> 'b -> pred:SetV.t -> succ:SetV.t -> 'bb) ->
     (vertex * vertex -> 'c -> 'cc) ->
     ('d -> 'dd) ->
     ('bb,'cc,'dd) t
-
-  val iter_vertex : ('b,'c,'d) t -> (vertex -> 'b -> SetV.t -> unit) -> unit
+  val transpose : 
+    ('b,'c,'d) t ->
+    (vertex -> 'b -> pred:SetV.t -> succ:SetV.t -> 'bb) ->
+    (vertex * vertex -> 'c -> 'cc) ->
+    ('d -> 'dd) ->
+    ('bb,'cc,'dd) t
+  val iter_vertex : ('b,'c,'d) t -> (vertex -> 'b -> pred:SetV.t -> succ:SetV.t -> unit) -> unit
   val iter_edge : ('b,'c,'d) t -> ((vertex * vertex) -> 'c -> unit) -> unit
-  val fold_vertex : ('b,'c,'d) t -> 'e -> (vertex -> 'b -> SetV.t -> 'e -> 'e) -> 'e
+  val fold_vertex : ('b,'c,'d) t -> 'e -> (vertex -> 'b -> pred:SetV.t -> succ:SetV.t -> 'e -> 'e) -> 'e
   val fold_edge : ('b,'c,'d) t -> 'e -> (vertex * vertex -> 'c -> 'e -> 'e) -> 'e
-
   val add_edge : ('b,'c,'d) t -> vertex * vertex -> 'c -> ('b,'c,'d) t
   val remove_edge : ('b,'c,'d) t -> vertex * vertex -> ('b,'c,'d) t
   val add_vertex : ('b,'c,'d) t -> vertex -> 'b -> ('b,'c,'d) t
@@ -127,7 +155,26 @@ module type S = sig
   val scfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex Ilist.t
   val min : ('b,'c,'d) t -> SetV.t
   val max : ('b,'c,'d) t -> SetV.t
-  val print : (Format.formatter -> vertex -> unit) -> (Format.formatter -> 'b -> unit) -> (Format.formatter -> 'c -> unit) -> (Format.formatter -> 'd -> unit) -> Format.formatter -> ('b,'c,'d) t -> unit
+  val print :
+    (Format.formatter -> vertex -> unit) -> 
+    (Format.formatter -> 'b -> unit) -> 
+    (Format.formatter -> 'c -> unit) -> 
+    (Format.formatter -> 'd -> unit) -> 
+    Format.formatter -> ('b,'c,'d) t -> unit
+
+  type 'b nodezz = {
+    succzz: SetV.t;
+    predzz: SetV.t;
+    attrvertexzz: 'b
+  }
+  type ('b,'c,'d) tzz = {
+    nodeszz: 'b nodezz MapV.t;
+    arcszz: 'c MapE.t;
+    infozz : 'd;
+  }
+
+  val repr : ('b,'c,'d) t -> ('b,'c,'d)  tzz
+  val obj : ('b,'c,'d) tzz -> ('b,'c,'d) t
 end
 
 module Make(T : T) : (S with type vertex=T.MapV.key
