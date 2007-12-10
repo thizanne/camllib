@@ -253,6 +253,21 @@ let reachable_multi root g sroot =
   reachable_aux root nodes g
 
 (* retourne les sommets no coaccessibles a partir d'un sommet *)
+let cosquelette make_attrvertex g =
+  Mappe.map
+    (fun n -> { n with attrvertex = make_attrvertex() })
+    g.nodes
+
+let cosquelette_multi root make_attrvertex g sroot =
+  Mappe.add
+    root
+    { pred = sroot;
+      succ = Sette.empty;
+      attrvertex = make_attrvertex() }
+    (Mappe.map
+       (fun n -> { n with attrvertex = make_attrvertex() })
+       g.nodes)
+
 let coreachable_aux root nodes g =
   let rec visit v =
     let nv = Mappe.find v nodes in
@@ -274,11 +289,11 @@ let coreachable_aux root nodes g =
     Sette.empty
 
 let coreachable g root =
-  let nodes = squelette (fun () -> ref false) g in
+  let nodes = cosquelette (fun () -> ref false) g in
   coreachable_aux root nodes g
 
 let coreachable_multi root g sroot =
-  let nodes = squelette_multi root (fun () -> ref false) g sroot in
+  let nodes = cosquelette_multi root (fun () -> ref false) g sroot in
   coreachable_aux root nodes g
 
 (* composantes fortement connexes *)
@@ -850,6 +865,21 @@ struct
     reachable_aux root nodes g
 
   (* retourne les sommets non coaccessibles a partir d'un sommet *)
+  let cosquelette make_attrvertex g =
+    MapV.map
+      (fun n -> { n with attrvertex = make_attrvertex() })
+      g.nodes
+
+  let cosquelette_multi root make_attrvertex g sroot =
+    MapV.add
+      root
+      { pred = sroot;
+      succ = SetV.empty;
+      attrvertex = make_attrvertex() }
+      (MapV.map
+	(fun n -> { n with attrvertex = make_attrvertex() })
+	g.nodes)
+
   let coreachable_aux root nodes g =
     let rec visit v =
       let nv = MapV.find v nodes in
@@ -871,11 +901,11 @@ struct
       SetV.empty
 
   let coreachable g root =
-    let nodes = squelette (fun () -> ref false) g in
+    let nodes = cosquelette (fun () -> ref false) g in
     coreachable_aux root nodes g
 
   let coreachable_multi root g sroot =
-    let nodes = squelette_multi root (fun () -> ref false) g sroot in
+    let nodes = cosquelette_multi root (fun () -> ref false) g sroot in
     coreachable_aux root nodes g
 
   (* composantes fortement connexes *)

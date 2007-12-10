@@ -396,6 +396,7 @@ module type S = sig
 
   val map_vertex : ('b,'c,'d) t -> (vertex -> 'b -> 'e) -> ('e, 'c,'d) t
   val map_edge : ('b,'c,'d) t -> (vertex * vertex -> 'c -> 'e) -> ('b, 'e, 'd) t
+  val map_info : ('b,'c,'d) t -> ('d -> 'e) -> ('b, 'c, 'e) t
   val map :
     ('b,'c,'d) t ->
     (vertex -> 'b -> 'bb) ->
