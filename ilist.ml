@@ -87,7 +87,7 @@ let fold_right f ilist res =
       Nil -> res
     | Cons(Atome(a),reste) ->
 	let nres = parcours res false reste in
-	f flag a res
+	f flag a nres
     | Cons(List(l),reste) -> 
 	let nres = parcours res false reste in
 	parcours nres true l 

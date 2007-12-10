@@ -55,11 +55,17 @@ val merge : ('b -> 'b -> 'b) -> ('a,'b) t -> ('a,'b) t -> ('a,'b) t
 	(** [merge mergedata a b] is similar to [addmap a b], but if a key [k]
 	    is bound to [d1] in [m1] and to [d2] in [m2], the key [k] is bound
 	    to [mergedata d1 d2] in the result *)
+val mergei : ('a -> 'b -> 'b -> 'b) -> ('a,'b) t -> ('a,'b) t -> ('a,'b) t
+	(** Same as [merge], but the function receives as arguments the key
+	    (of the first map) *)
 val common : ('b -> 'c -> 'd) -> ('a,'b) t -> ('a,'c) t -> ('a,'d) t
 	(** [common commondata a b] returns a map the keys of which must be
 	    keys in both [a] and in [b], and those keys are bound to [interdata
 	    d1 d2]. *)
-val combine : ('b option -> 'c option -> 'd option) -> ('a,'b) t -> ('a,'c) t -> ('a,'d) t
+val commoni : ('a -> 'b -> 'c -> 'd) -> ('a,'b) t -> ('a,'c) t -> ('a,'d) t
+	(** Same as [common], but the function receives as arguments the key
+	    (of the first map) *)
+val combine : ('a -> 'b option -> 'c option -> 'd option) -> ('a,'b) t -> ('a,'c) t -> ('a,'d) t
 val interset : ('a,'b) t -> 'a Sette.t -> ('a,'b) t
 	(** [interset map set] selects the bindings in [a] whose key belongs to
 	    [set]. *)
@@ -91,9 +97,12 @@ val mapofset: ('a -> 'b) -> 'a Sette.t -> ('a,'b) t
 	(** [mapofset f s] returns the map associating [f key] to
 	   [key], for each element [key] of the set [s] *)
 val compare: ('b -> 'b -> int) -> ('a,'b) t -> ('a,'b) t -> int
-	(** Comparison function between maps *)
+	(** Comparison function between maps,
+	    total if the comparison function for data is total *)
 val equal: ('b -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t -> bool
 	(** equality between maps *)
+val subset: ('b -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t -> bool
+	(** subset between maps *)
 val filter: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t
 	(** [filter p m] returns the map of all bindings in [m] that satisfy
 	  predicate [p]. *)
@@ -133,7 +142,9 @@ module type S = sig
   val mem : key -> 'a t -> bool
   val addmap : 'a t -> 'a t -> 'a t
   val merge : ('a -> 'a -> 'a) -> 'a t -> 'a t -> 'a t
+  val mergei : (key -> 'a -> 'a -> 'a) -> 'a t -> 'a t -> 'a t
   val common : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+  val commoni : (key -> 'a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
   val interset : 'a t -> Setkey.t -> 'a t
   val diffset : 'a t -> Setkey.t -> 'a t
   val iter : (key -> 'a -> unit) -> 'a t -> unit
@@ -144,6 +155,7 @@ module type S = sig
   val mapofset: (key -> 'a) -> Setkey.t -> 'a t
   val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  val subset : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
   val filter: (key -> 'a -> bool) -> 'a t -> 'a t
   val partition: (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
   val cardinal : 'a t -> int

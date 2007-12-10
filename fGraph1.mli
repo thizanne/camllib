@@ -24,6 +24,7 @@ val edges : ('a,'b,'c,'d) t -> ('a * 'a) Sette.t
 
 val map_vertex : ('a,'b,'c,'d) t -> ('a -> 'b -> 'e) -> ('a, 'e, 'c, 'd) t
 val map_edge : ('a,'b,'c,'d) t -> ('a * 'a -> 'c -> 'e) -> ('a, 'b, 'e, 'd) t
+val map_info : ('a,'b,'c,'d) t -> ('d -> 'e) -> ('a, 'b, 'c, 'e) t
 val map : 
   ('a,'b,'c,'d) t ->
   ('a -> 'b -> 'bb) ->
@@ -100,6 +101,7 @@ module type S = sig
 
   val map_vertex : ('b,'c,'d) t -> (vertex -> 'b -> 'e) -> ('e, 'c,'d) t
   val map_edge : ('b,'c,'d) t -> (vertex * vertex -> 'c -> 'e) -> ('b, 'e, 'd) t
+  val map_info : ('b,'c,'d) t -> ('d -> 'e) -> ('b, 'c, 'e) t
   val map : 
     ('b,'c,'d) t ->
     (vertex -> 'b -> 'bb) ->

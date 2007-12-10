@@ -1,4 +1,3 @@
-
 open Format
 open Ilist
 
@@ -14,7 +13,7 @@ type ('a,'b,'c,'d) t = {
     nodes: ('a, ('a,'b) node) Mappe.t;
     arcs: ('a*'a,'c) Mappe.t;
     info: 'd;
-  } 
+  }
 
 let info g = g.info
 let set_info g info = { g with info=info }
@@ -31,124 +30,128 @@ let is_empty g = (g.nodes = Mappe.empty)
 let is_vertex g i =
   try let _ = node g i in true
   with Not_found -> false
-let is_edge g arc = 
+let is_edge g arc =
   try let _ = Mappe.find arc g.arcs in true
   with Not_found -> false
 
 let vertices g = Mappe.fold (fun v nv set -> Sette.add v set) g.nodes Sette.empty
 let edges g = Mappe.fold (fun arc attredge set -> Sette.add arc set) g.arcs Sette.empty
 
-let map_vertex g f = { g with 
-  nodes = 
+let map_vertex g f = { g with
+  nodes =
   Mappe.mapi
     (fun v nv -> { nv with attrvertex = f v nv.attrvertex  })
     g.nodes;
 }
- 
+
 let iter_vertex g f = Mappe.iter (fun v nv -> f v nv.attrvertex nv.succ) g.nodes
 let fold_vertex g r f = Mappe.fold (fun v nv r -> f v nv.attrvertex nv.succ r) g.nodes r
 let map_edge g f = { g with
   arcs = Mappe.mapi f g.arcs;
-} 
+}
 let iter_edge g f = Mappe.iter f g.arcs
 let fold_edge g r f = Mappe.fold f g.arcs r
 
+let map_info g f = { g with
+  info = f g.info
+}
+
 let map g mapvertex mapedge mapinfo = {
-  nodes = Mappe.mapi 
-  (fun v node -> { node with attrvertex = mapvertex v node.attrvertex }) 
+  nodes = Mappe.mapi
+  (fun v node -> { node with attrvertex = mapvertex v node.attrvertex })
   g.nodes;
   arcs = Mappe.mapi mapedge g.arcs;
   info = mapinfo g.info;
-} 
+}
 
-let pred g n = 
+let pred g n =
   fold_vertex g Sette.empty
     (fun v _ succ set -> if Sette.mem n succ then Sette.add v set else set)
 
-let add_edge g ((a,b) as arc) attredge = 
+let add_edge g ((a,b) as arc) attredge =
   try {
     nodes = begin
       if is_edge g arc then
 	g.nodes
       else
 	let na = node g a in
-	Mappe.add a 
+	Mappe.add a
 	  { succ = Sette.add b na.succ; attrvertex = na.attrvertex }
 	  g.nodes
     end;
     arcs = Mappe.add arc attredge g.arcs;
     info = g.info;
-  } 
+  }
   with Not_found -> failwith "FGraph1.add_edge"
 
-let remove_edge g ((a,b) as arc) = 
+let remove_edge g ((a,b) as arc) =
   try {
     nodes = begin
       let na = node g a in
-      Mappe.add a 
+      Mappe.add a
 	{ succ = Sette.remove b na.succ; attrvertex = na.attrvertex }
 	g.nodes
     end;
     arcs = Mappe.remove arc g.arcs;
     info = g.info;
-  } 
+  }
   with Not_found -> failwith "FGraph1.remove_edge"
-      
-let add_vertex g v attrvertex = 
+
+let add_vertex g v attrvertex =
   try
-    let anode = Mappe.find v g.nodes in 
+    let anode = Mappe.find v g.nodes in
     { g with nodes = Mappe.add v { anode with attrvertex = attrvertex } g.nodes}
-  with Not_found -> 
+  with Not_found ->
     { g with nodes = Mappe.add v { succ = Sette.empty; attrvertex = attrvertex } g.nodes}
 
-let remove_vertex g v = 
-  let nodev = 
+let remove_vertex g v =
+  let nodev =
     try node g v
-    with Not_found -> 
+    with Not_found ->
       raise (Failure "FGraph1.remove_vertex")
   in
   let nodes = Mappe.remove v g.nodes in
   let nodes = Mappe.map
-    (begin fun node -> 
-      if Sette.mem v node.succ then 
+    (begin fun node ->
+      if Sette.mem v node.succ then
 	{ node with succ = Sette.remove v node.succ }
-      else 
+      else
 	node
     end)
     nodes
   in
   {
     nodes = nodes;
-    arcs = 
-    begin 
+    arcs =
+    begin
       Sette.fold
 	(fun succ arcs -> Mappe.remove (v,succ) arcs)
 	nodev.succ
 	g.arcs;
     end;
-    info = g.info; 
+    info = g.info;
   }
 
 
 (* fonctions auxiliaires *)
 let squelette make_attrvertex g =
-  Mappe.map 
+  Mappe.map
     (fun n -> { n with attrvertex = make_attrvertex() })
     g.nodes
 
 let squelette_multi root make_attrvertex g sroot =
-  Mappe.add 
+  Mappe.add
     root
     { succ = sroot;
       attrvertex = make_attrvertex() }
       (Mappe.map
-        (fun n -> { n with attrvertex = make_attrvertex() })
-        g.nodes)
+	(fun n -> { n with attrvertex = make_attrvertex() })
+	g.nodes)
 
 let topological_sort_aux root nodes =
-  let rec visit v res = 
+  let rec visit v res =
     let nv = Mappe.find v nodes in
-    if !(nv.attrvertex) then 
+    if !(nv.attrvertex) then
       res
     else
       begin
@@ -156,13 +159,13 @@ let topological_sort_aux root nodes =
 	v :: (Sette.fold visit nv.succ res)
       end
   in
-  visit root [] 
+  visit root []
 
-let topological_sort g root = 
+let topological_sort g root =
   let nodes = squelette (fun () -> ref false) g in
   topological_sort_aux root nodes
 
-let topological_sort_multi root g sroot = 
+let topological_sort_multi root g sroot =
   let nodes = squelette_multi root  (fun () -> ref false) g sroot in
   List.tl (topological_sort_aux root nodes)
 
@@ -192,12 +195,12 @@ let reachable g root =
   let nodes = squelette (fun () -> ref false) g in
   reachable_aux root nodes g
 
-let reachable_multi root g sroot = 
+let reachable_multi root g sroot =
   let nodes = squelette_multi root (fun () -> ref false) g sroot in
-  reachable_aux root nodes g 
+  reachable_aux root nodes g
 
 (* composantes fortement connexes *)
-let cfc_aux root nodes = 
+let cfc_aux root nodes =
   let num       = ref(-1) and
       partition = ref [] and
       pile      = Stack.create()
@@ -207,7 +210,7 @@ let cfc_aux root nodes =
     let node = (Mappe.find sommet nodes) in
     incr num;
     node.attrvertex := !num;
-    let head = 
+    let head =
       Sette.fold
 	(fun succ head ->
 	  let dfn = !((Mappe.find succ nodes).attrvertex) in
@@ -216,7 +219,7 @@ let cfc_aux root nodes =
 	node.succ
 	!num
     in
-    if head = !(node.attrvertex) then 
+    if head = !(node.attrvertex) then
       begin
 	let element = ref (Stack.pop pile) in
 	let composante = ref [!element] in
@@ -233,30 +236,30 @@ let cfc_aux root nodes =
   let _ = visit root in
   !partition
 
-let cfc g root = 
+let cfc g root =
   let nodes = squelette (fun () -> ref min_int) g in
-  cfc_aux root nodes 
+  cfc_aux root nodes
 
-let cfc_multi root g sroot = 
+let cfc_multi root g sroot =
   let nodes = squelette_multi root (fun () -> ref min_int) g sroot in
   match cfc_aux root nodes with
   | [x] :: r when x=root -> r
   | _ -> failwith "graph.ml: cfc_multi"
 
-let scfc_aux root nodes = 
+let scfc_aux root nodes =
   let num       = ref(-1) and
       pile      = Stack.create()
   in
   let rec composante sommet =
     let partition = ref Nil in
     Sette.iter
-      (function x -> 
+      (function x ->
 	if !((Mappe.find x nodes).attrvertex) = min_int then begin
 	  ignore (visit x partition)
 	end)
       (Mappe.find sommet nodes).succ;
     Cons(Atome sommet, !partition)
-	
+
   and visit sommet partition =
     Stack.push sommet pile;
     incr num;
@@ -267,24 +270,24 @@ let scfc_aux root nodes =
        (fun succ ->
 	 let dfn = !((Mappe.find succ nodes).attrvertex) in
 	 let m =
-	   if dfn=min_int 
+	   if dfn=min_int
 	   then (visit succ partition)
-	   else dfn 
+	   else dfn
 	 in
 	 if m <= !head then begin loop := true; head := m end)
        node.succ);
-    if !head = !(node.attrvertex) then 
+    if !head = !(node.attrvertex) then
       begin
 	node.attrvertex := max_int;
 	let element = ref (Stack.pop pile) in
-	if !loop then 
+	if !loop then
 	  begin
 	    while !element <> sommet do
 	      (Mappe.find !element nodes).attrvertex := min_int;
 	      element := Stack.pop pile
 	    done;
 	    partition := Cons(List(composante sommet),!partition )
-	  end 
+	  end
 	else
 	  partition := Cons(Atome(sommet),!partition)
       end;
@@ -293,18 +296,18 @@ let scfc_aux root nodes =
   let partition = ref Nil in
   let _ = visit root partition in
   !partition
-    
-let scfc g root = 
+
+let scfc g root =
   let nodes = squelette (fun () -> ref min_int) g in
   scfc_aux root nodes
 
-let scfc_multi root g sroot = 
+let scfc_multi root g sroot =
   let nodes = squelette_multi root (fun () -> ref min_int) g sroot in
   let res = scfc_aux root nodes in
   match res with
   | Cons(Atome(x),l) when x=root -> l
   | _ -> failwith "graph.ml: scfc_multi"
-	
+
 let min g =
   let marks = squelette (fun () -> (ref true)) g in
   Mappe.iter
@@ -320,7 +323,7 @@ let min g =
     Sette.empty
 let max g =
   Mappe.fold
-    (fun sommet node res -> 
+    (fun sommet node res ->
        if Sette.is_empty node.succ then Sette.add sommet res else res)
     g.nodes
     Sette.empty
@@ -345,7 +348,7 @@ let print print_vertex print_attrvertex print_attredge print_info formatter g =
     print_info g.info
   ;
   ()
-    
+
 (*  ********************************************************************** *)
 (** {2 Functor version} *)
 (*  ********************************************************************** *)
@@ -370,15 +373,15 @@ module type S = sig
     (** The Map for vertices *)
   module MapE : (Mappe.S with type key=vertex*vertex and module Setkey=SetE)
     (** The Map for edges *)
-	    
+
   type ('b,'c,'d) t
     (** The type of graphs, where:
       - ['b] is the type of vertex attribute (attrvertex);
       - ['c] is the type of edge attributes (attredge)
     *)
-    
+
   val info : ('b,'c,'d) t -> 'd
-  val set_info : ('b,'c,'d) t -> 'd -> ('b,'c,'d) t 
+  val set_info : ('b,'c,'d) t -> 'd -> ('b,'c,'d) t
   val succ : ('b,'c,'d) t -> vertex -> SetV.t
   val pred : ('b,'c,'d) t -> vertex -> SetV.t
   val attrvertex : ('b,'c,'d) t -> vertex -> 'b
@@ -393,7 +396,7 @@ module type S = sig
 
   val map_vertex : ('b,'c,'d) t -> (vertex -> 'b -> 'e) -> ('e, 'c,'d) t
   val map_edge : ('b,'c,'d) t -> (vertex * vertex -> 'c -> 'e) -> ('b, 'e, 'd) t
-  val map : 
+  val map :
     ('b,'c,'d) t ->
     (vertex -> 'b -> 'bb) ->
     (vertex * vertex -> 'c -> 'cc) ->
@@ -427,7 +430,7 @@ module Make(T : T) : (S with type vertex=T.MapV.key
 			and module SetE=T.MapE.Setkey
 			and module MapV=T.MapV
 			and module MapE=T.MapE)
-  = 
+  =
 struct
 
   type vertex = T.MapV.key
@@ -445,30 +448,30 @@ struct
     arcs: 'c MapE.t;
     info : 'd;
   }
-  
+
   let info g = g.info
   let set_info g info = { g with info=info }
   let node g n = MapV.find n g.nodes
   let succ g n = (node g n).succ
   let attrvertex g n = (node g n).attrvertex
-  
+
   let attredge g arc = MapE.find arc g.arcs
   let empty info = { nodes = MapV.empty; arcs = MapE.empty; info = info }
   let size g = MapV.fold (fun _ _ n -> n+1) g.nodes 0
-  
+
   let is_empty g = (g.nodes = MapV.empty)
   let is_vertex g i =
     try let _ = node g i in true
     with Not_found -> false
-  let is_edge g arc = 
+  let is_edge g arc =
     try let _ = MapE.find arc g.arcs in true
     with Not_found -> false
-  
+
   let vertices g = MapV.fold (fun v nv set -> SetV.add v set) g.nodes SetV.empty
   let edges g = MapE.fold (fun arc attredge set -> SetE.add arc set) g.arcs SetE.empty
-  
-  let map_vertex g f = { g with 
-    nodes = 
+
+  let map_vertex g f = { g with
+    nodes =
     MapV.mapi
       (fun v nv -> { nv with attrvertex = f v nv.attrvertex  })
       g.nodes;
@@ -478,215 +481,219 @@ struct
   let fold_vertex g r f = MapV.fold (fun v nv r -> f v nv.attrvertex nv.succ r) g.nodes r
   let map_edge g f = { g with
     arcs = MapE.mapi f g.arcs;
-  } 
+  }
   let iter_edge g f = MapE.iter f g.arcs
   let fold_edge g r f = MapE.fold f g.arcs r
-  
+
+  let map_info g f = { g with
+    info = f g.info
+  }
+
   let map g mapvertex mapedge mapinfo = {
-    nodes = MapV.mapi  
-    (fun v node -> { 
+    nodes = MapV.mapi
+    (fun v node -> {
       attrvertex = mapvertex v node.attrvertex;
       succ = node.succ
-    }) 
+    })
     g.nodes;
     arcs = MapE.mapi mapedge g.arcs;
     info = mapinfo g.info;
-  } 
+  }
 
-  let pred g n = 
+  let pred g n =
     fold_vertex g SetV.empty
       (fun v _ succ set -> if SetV.mem n succ then SetV.add v set else set)
-  
-  let add_edge g ((a,b) as arc) attredge = 
+
+  let add_edge g ((a,b) as arc) attredge =
     try {
       nodes = begin
-        if is_edge g arc then
-  	  g.nodes
-        else
-  	  let na = node g a in
-  	  MapV.add a 
-  	    { succ = SetV.add b na.succ; attrvertex = na.attrvertex }
-  	    g.nodes
+	if is_edge g arc then
+	  g.nodes
+	else
+	  let na = node g a in
+	  MapV.add a
+	    { succ = SetV.add b na.succ; attrvertex = na.attrvertex }
+	    g.nodes
       end;
       arcs = MapE.add arc attredge g.arcs;
       info = g.info;
-    } 
+    }
     with Not_found -> failwith "FGraph1.add_edge"
-  
-  let remove_edge g ((a,b) as arc) = 
+
+  let remove_edge g ((a,b) as arc) =
     try {
       nodes = begin
-        let na = node g a in
-        MapV.add a 
-  	  { succ = SetV.remove b na.succ; attrvertex = na.attrvertex }
-  	  g.nodes
+	let na = node g a in
+	MapV.add a
+	  { succ = SetV.remove b na.succ; attrvertex = na.attrvertex }
+	  g.nodes
       end;
       arcs = MapE.remove arc g.arcs;
       info = g.info;
-    } 
+    }
     with Not_found -> failwith "FGraph1.remove_edge"
-        
-  let add_vertex g v attrvertex = 
+
+  let add_vertex g v attrvertex =
   try
-    let anode = MapV.find v g.nodes in 
+    let anode = MapV.find v g.nodes in
     { g with nodes = MapV.add v { anode with attrvertex = attrvertex } g.nodes}
-  with Not_found -> 
+  with Not_found ->
     { g with nodes = MapV.add v { succ = SetV.empty; attrvertex = attrvertex } g.nodes}
-  
-  let remove_vertex g v = 
-    let nodev = 
+
+  let remove_vertex g v =
+    let nodev =
       try node g v
-      with Not_found -> 
+      with Not_found ->
 	raise (Failure "FGraph1.remove_vertex")
     in
     let nodes = MapV.remove v g.nodes in
     let nodes = MapV.map
-      (begin fun node -> 
-	if SetV.mem v node.succ then 
+      (begin fun node ->
+	if SetV.mem v node.succ then
 	  { node with succ = SetV.remove v node.succ }
-	else 
+	else
 	  node
       end)
       nodes
     in
     {
       nodes = nodes;
-      arcs = 
-      begin 
+      arcs =
+      begin
 	SetV.fold
 	  (fun succ arcs -> MapE.remove (v,succ) arcs)
 	  nodev.succ
 	  g.arcs;
       end;
-      info = g.info; 
+      info = g.info;
     }
 
   let squelette make_attrvertex g =
-    MapV.map 
+    MapV.map
       (fun n -> { n with attrvertex = make_attrvertex() })
       g.nodes
-      
+
   let squelette_multi root make_attrvertex g sroot =
-    MapV.add 
+    MapV.add
       root
       { succ = sroot;
       attrvertex = make_attrvertex() }
       (MapV.map
-        (fun n -> { n with attrvertex = make_attrvertex() })
-        g.nodes)
-  
+	(fun n -> { n with attrvertex = make_attrvertex() })
+	g.nodes)
+
   let topological_sort_aux root nodes =
-    let rec visit v res = 
+    let rec visit v res =
       let nv = MapV.find v nodes in
-      if !(nv.attrvertex) then 
-        res
+      if !(nv.attrvertex) then
+	res
       else
-        begin
-  	nv.attrvertex := true;
-  	v :: (SetV.fold visit nv.succ res)
-        end
+	begin
+	nv.attrvertex := true;
+	v :: (SetV.fold visit nv.succ res)
+	end
     in
-    visit root [] 
-  
-  let topological_sort g root = 
+    visit root []
+
+  let topological_sort g root =
     let nodes = squelette (fun () -> ref false) g in
     topological_sort_aux root nodes
-  
-  let topological_sort_multi root g sroot = 
+
+  let topological_sort_multi root g sroot =
     let nodes = squelette_multi root  (fun () -> ref false) g sroot in
     List.tl (topological_sort_aux root nodes)
-  
-  
+
+
   (* retourne les sommets inaccessibles a partir d'un sommet *)
   let reachable_aux root nodes g =
     let rec visit v =
       let nv = MapV.find v nodes in
       if not !(nv.attrvertex) then
-        begin
-  	nv.attrvertex := true;
-  	SetV.iter visit nv.succ
-        end
+	begin
+	nv.attrvertex := true;
+	SetV.iter visit nv.succ
+	end
     in
     visit root ;
     MapV.fold
       (begin fun v nv removed ->
-        if !((MapV.find v nodes).attrvertex) then
-  	removed
-        else
-  	SetV.add v removed;
+	if !((MapV.find v nodes).attrvertex) then
+	removed
+	else
+	SetV.add v removed;
       end)
       g.nodes
       SetV.empty
-  
+
   let reachable g root =
     let nodes = squelette (fun () -> ref false) g in
     reachable_aux root nodes g
-  
-  let reachable_multi root g sroot = 
+
+  let reachable_multi root g sroot =
     let nodes = squelette_multi root (fun () -> ref false) g sroot in
-    reachable_aux root nodes g 
-  
+    reachable_aux root nodes g
+
   (* composantes fortement connexes *)
-  let cfc_aux root nodes = 
+  let cfc_aux root nodes =
     let num       = ref(-1) and
-        partition = ref [] and
-        pile      = Stack.create()
+	partition = ref [] and
+	pile      = Stack.create()
     in
     let rec visit sommet =
       Stack.push sommet pile;
       let node = (MapV.find sommet nodes) in
       incr num;
       node.attrvertex := !num;
-      let head = 
-        SetV.fold
-  	(fun succ head ->
-  	  let dfn = !((MapV.find succ nodes).attrvertex) in
-  	  let m = if dfn=min_int then (visit succ) else dfn in
-  	  Pervasives.min m head)
-  	node.succ
-  	!num
+      let head =
+	SetV.fold
+	(fun succ head ->
+	  let dfn = !((MapV.find succ nodes).attrvertex) in
+	  let m = if dfn=min_int then (visit succ) else dfn in
+	  Pervasives.min m head)
+	node.succ
+	!num
       in
-      if head = !(node.attrvertex) then 
-        begin
-  	let element = ref (Stack.pop pile) in
-  	let composante = ref [!element] in
-  	  (MapV.find !element nodes).attrvertex := max_int;
-  	  while !element <> sommet do
-  	    element := Stack.pop pile;
-  	    (MapV.find !element nodes).attrvertex := max_int;
-  	    composante := !element :: !composante
-  	  done;
-  	partition := !composante :: !partition
-        end;
+      if head = !(node.attrvertex) then
+	begin
+	let element = ref (Stack.pop pile) in
+	let composante = ref [!element] in
+	  (MapV.find !element nodes).attrvertex := max_int;
+	  while !element <> sommet do
+	    element := Stack.pop pile;
+	    (MapV.find !element nodes).attrvertex := max_int;
+	    composante := !element :: !composante
+	  done;
+	partition := !composante :: !partition
+	end;
       head
     in
     let _ = visit root in
     !partition
-  
-  let cfc g root = 
+
+  let cfc g root =
     let nodes = squelette (fun () -> ref min_int) g in
-    cfc_aux root nodes 
-  
-  let cfc_multi root g sroot = 
+    cfc_aux root nodes
+
+  let cfc_multi root g sroot =
     let nodes = squelette_multi root (fun () -> ref min_int) g sroot in
     match cfc_aux root nodes with
-    | [x] :: r when (SetV.Ord.compare x root)=0 -> r 
+    | [x] :: r when (SetV.Ord.compare x root)=0 -> r
     | _ -> failwith "graph.ml: cfc_multi"
-  
-  let scfc_aux root nodes = 
+
+  let scfc_aux root nodes =
     let num       = ref(-1) and
-        pile      = Stack.create()
+	pile      = Stack.create()
     in
     let rec composante sommet =
       let partition = ref Nil in
       SetV.iter
-        (function x -> 
-  	if !((MapV.find x nodes).attrvertex) = min_int then begin
-  	  ignore (visit x partition)
-  	end)
-        (MapV.find sommet nodes).succ;
+	(function x ->
+	if !((MapV.find x nodes).attrvertex) = min_int then begin
+	  ignore (visit x partition)
+	end)
+	(MapV.find sommet nodes).succ;
       Cons(Atome sommet, !partition)
-  	
+
     and visit sommet partition =
       Stack.push sommet pile;
       incr num;
@@ -694,54 +701,54 @@ struct
       node.attrvertex := !num;
       let head = ref !num and loop = ref false in
       (SetV.iter
-         (fun succ ->
-  	 let dfn = !((MapV.find succ nodes).attrvertex) in
-  	 let m =
-  	   if dfn=min_int 
-  	   then (visit succ partition)
-  	   else dfn 
-  	 in
-  	 if m <= !head then begin loop := true; head := m end)
-         node.succ);
-      if !head = !(node.attrvertex) then 
-        begin
-  	node.attrvertex := max_int;
-  	let element = ref (Stack.pop pile) in
-  	if !loop then 
-  	  begin
-  	    while !element <> sommet do
-  	      (MapV.find !element nodes).attrvertex := min_int;
-  	      element := Stack.pop pile
-  	    done;
-  	    partition := Cons(List(composante sommet),!partition )
-  	  end 
-  	else
-  	  partition := Cons(Atome(sommet),!partition)
-        end;
+	 (fun succ ->
+	 let dfn = !((MapV.find succ nodes).attrvertex) in
+	 let m =
+	   if dfn=min_int
+	   then (visit succ partition)
+	   else dfn
+	 in
+	 if m <= !head then begin loop := true; head := m end)
+	 node.succ);
+      if !head = !(node.attrvertex) then
+	begin
+	node.attrvertex := max_int;
+	let element = ref (Stack.pop pile) in
+	if !loop then
+	  begin
+	    while !element <> sommet do
+	      (MapV.find !element nodes).attrvertex := min_int;
+	      element := Stack.pop pile
+	    done;
+	    partition := Cons(List(composante sommet),!partition )
+	  end
+	else
+	  partition := Cons(Atome(sommet),!partition)
+	end;
       !head
     in
     let partition = ref Nil in
     let _ = visit root partition in
     !partition
-      
-  let scfc g root = 
+
+  let scfc g root =
     let nodes = squelette (fun () -> ref min_int) g in
     scfc_aux root nodes
-  
-  let scfc_multi root g sroot = 
+
+  let scfc_multi root g sroot =
     let nodes = squelette_multi root (fun () -> ref min_int) g sroot in
     let res = scfc_aux root nodes in
     match res with
     | Cons(Atome(x),l) when (SetV.Ord.compare x root)=0 -> l
     | _ -> failwith "graph.ml: scfc_multi"
-  	
+
   let min g =
     let marks = squelette (fun () -> (ref true)) g in
     MapV.iter
       (begin fun v nv ->
-        SetV.iter
-  	(fun succ -> let flag = (MapV.find succ marks).attrvertex in flag := false)
-  	nv.succ
+	SetV.iter
+	(fun succ -> let flag = (MapV.find succ marks).attrvertex in flag := false)
+	nv.succ
       end)
       marks;
     MapV.fold
@@ -750,11 +757,11 @@ struct
       SetV.empty
   let max g =
     MapV.fold
-      (fun sommet node res -> 
-         if SetV.is_empty node.succ then SetV.add sommet res else res)
+      (fun sommet node res ->
+	 if SetV.is_empty node.succ then SetV.add sommet res else res)
       g.nodes
       SetV.empty
-  
+
   let print print_vertex print_attrvertex print_attredge print_info formatter g =
     let print_node formatter node =
       fprintf formatter "@[<hv>attrvertex = %a;@ succ = %a;@]"
@@ -777,6 +784,3 @@ struct
     ()
 
 end
-  
-    
-  

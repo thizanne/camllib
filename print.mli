@@ -64,3 +64,8 @@ val sprintf:
   ('a, Format.formatter, unit, string) format4 -> 'a
   (** Better [sprintf] function than [Format.sprintf], as it takes the same
     kind of formatters as other [Format.Xprintf] functions. *)
+
+val escaped: ?linebreak:char -> string -> string
+  (** Escape a string, replacing line breaks by [linebreak] (default
+    ['\n']). When used for DOT output, ['\l'] and ['\r'] produces respectively
+    left or right justified lines, instead of center justified lines. *)

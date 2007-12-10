@@ -326,26 +326,20 @@ val print_dot :
 
       [print_attrvertex Format.str_formatter vertex attr;]
 
-      [Format.pp_print_string fmt (String.escaped (Format.flush_str_formatter ()));].
+      [Format.pp_print_string fmt (String.escaped (Format.flush_str_formatter
+      ()));].
 
       Concerning the escape function, you may use [String.escaped], which will
-      produce center justified line breaks, or the provided [escaped] (see
-      below) which allows also to choose between center, left and right
-      justified lines.}  {li hedge atributes (same comment as for vertex
-      attributes).}}
+      produce center justified line breaks, or [Print.escaped] which allows
+      also to choose between center, left and right justified lines.}  {li
+      hedge atributes (same comment as for vertex attributes).}}
 
     The optional arguments allows to customize the style. The default setting
     corresponds to:
 
     [print_dot ~titlestyle="shape=ellipse,style=bold,style=filled,fontsize=20"
 ~vertexstyle="shape=box,fontsize=12" ~hedgestyle="shape=ellipse,fontsize=12"
-~title="" ...].
-  *)
-
-val escaped: ?linebreak:char -> string -> string
-  (** Escape a string, replacing line breaks by [linebreak] (default
-    ['\n']). When used for DOT output, ['\l'] and ['\r'] produces respectively
-    left or righjt justified lines, instead of center justified lines. *)
+~title="" ...].  *)
 
 (*  ********************************************************************** *)
 (** {2 Parameter module for the functor version} *)

@@ -820,50 +820,6 @@ let print_dot
   fprintf fmt "@]@.}@.";
   ()
 
-external is_printable: char -> bool = "caml_is_printable"
-external char_code: char -> int = "%identity"
-external char_chr: int -> char = "%identity"
-
-let escaped ?(linebreak:char='\n') s =
-  let n = ref 0 in
-  for i = 0 to String.length s - 1 do
-    n := !n +
-    (match String.unsafe_get s i with
-    '"' | '\\' | '\n' | '\t' -> 2
-    | c -> if is_printable c then 1 else 4)
-  done;
-  if !n = String.length s then s else begin
-    let s' = String.create !n in
-    n := 0;
-    for i = 0 to String.length s - 1 do
-      begin
-	match String.unsafe_get s i with
-	('"' | '\\') as c ->
-	  String.unsafe_set s' !n '\\'; incr n; String.unsafe_set s' !n c
-	| '\n' ->
-	    String.unsafe_set s' !n '\\'; incr n; String.unsafe_set s' !n linebreak
-	| '\t' ->
-	    String.unsafe_set s' !n '\\'; incr n; String.unsafe_set s' !n 't'
-	| c ->
-	    if is_printable c then
-	      String.unsafe_set s' !n c
-	    else begin
-	      let a = char_code c in
-	      String.unsafe_set s' !n '\\';
-	      incr n;
-	      String.unsafe_set s' !n (char_chr (48 + a / 100));
-	      incr n;
-	      String.unsafe_set s' !n (char_chr (48 + (a / 10) mod 10));
-	      incr n;
-	      String.unsafe_set s' !n (char_chr (48 + a mod 10))
-	    end
-      end;
-      incr n
-    done;
-    s'
-  end
-
-
 
 module type T = sig
   type vertex

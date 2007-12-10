@@ -121,7 +121,7 @@ let concat t1 t2 =
    - l is the set of bindings of s with keys that are < x
    - r is the set of bindings of s with keys that are > x
    - present is None if s contains no key equal to x,
-     or Some(data) if  s contains a key equal to x bound to data 
+     or Some(data) if  s contains a key equal to x bound to data
 *)
 let rec split key = function
     Emptyzz ->
@@ -155,8 +155,8 @@ let rec addmap m1 m2 =
 	if h2 = 1 then add x2 d2 m1 else begin
 	  let (l2, pres, r2) = split x1 m2 in
 	  join
-	    (addmap l1 l2) 
-	    x1 
+	    (addmap l1 l2)
+	    x1
 	    (match pres with None -> d1 | Some d2 -> d2)
 	    (addmap r1 r2)
 	end
@@ -165,7 +165,7 @@ let rec addmap m1 m2 =
 	  let (l1, _, r1) = split x2 m1 in
 	  join (addmap l1 l2) x2 d2 (addmap r1 r2)
 	end
-	  
+
 let common f m1 m2 =
   let rec common m1 m2 =
     match (m1, m2) with
@@ -177,6 +177,20 @@ let common f m1 m2 =
 	    concat (common l1 l2) (common r1 r2)
 	| (l2, (Some d2), r2) ->
 	    join (common l1 l2) x1 (f d1 d2) (common r1 r2)
+  in
+  common m1 m2
+
+let commoni f m1 m2 =
+  let rec common m1 m2 =
+    match (m1, m2) with
+    | (Emptyzz, t2) -> Emptyzz
+    | (t1, Emptyzz) -> Emptyzz
+    | (Nodezz(l1, x1, d1, r1, _), t2) ->
+	match split x1 t2 with
+	| (l2, None, r2) ->
+	    concat (common l1 l2) (common r1 r2)
+	| (l2, (Some d2), r2) ->
+	    join (common l1 l2) x1 (f x1 d1 d2) (common r1 r2)
   in
   common m1 m2
 
@@ -293,6 +307,24 @@ let equal cmp m1 m2 =
   in
   equal_aux (cons_enum m1 End) (cons_enum m2 End)
 
+let subset cmp m1 m2 =
+  let rec subset_aux m1 m2 =
+      match (m1, m2) with
+        Emptyzz, _ ->
+          true
+      | _, Emptyzz ->
+          false
+      | Nodezz (l1, v1, d1, r1, _), (Nodezz (l2, v2, d2, r2, _) as t2) ->
+          let c = Pervasives.compare v1 v2 in
+          if c = 0 then
+            cmp d1 d2 && subset_aux l1 l2 && subset_aux r1 r2
+          else if c < 0 then
+            subset_aux (Nodezz (l1, v1, d1, Emptyzz, 0)) l2 && subset_aux r1 t2
+          else
+            subset_aux (Nodezz (Emptyzz, v1, d1, r1, 0)) r2 && subset_aux l1 t2
+  in
+  subset_aux m1 m2
+    
 let print
   ?(first : (unit, Format.formatter, unit) format = ("[@[<hv>" : (unit, Format.formatter, unit) format))
   ?(sep : (unit, Format.formatter, unit) format = (";@ ":(unit, Format.formatter, unit) format))
@@ -336,7 +368,9 @@ module type S = sig
   val mem : key -> 'a t -> bool
   val addmap : 'a t -> 'a t -> 'a t
   val merge : ('a -> 'a -> 'a) -> 'a t -> 'a t -> 'a t
+  val mergei : (key -> 'a -> 'a -> 'a) -> 'a t -> 'a t -> 'a t
   val common : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+  val commoni : (key -> 'a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
   val interset : 'a t -> Setkey.t -> 'a t
   val diffset : 'a t -> Setkey.t -> 'a t
   val iter : (key -> 'a -> unit) -> 'a t -> unit
@@ -347,6 +381,7 @@ module type S = sig
   val mapofset: (key -> 'a) -> Setkey.t -> 'a t
   val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  val subset : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
   val filter: (key -> 'a -> bool) -> 'a t -> 'a t
   val partition: (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
   val cardinal : 'a t -> int
@@ -413,7 +448,7 @@ module Make(Setkey : Sette.S) = struct
       - l is the set of bindings of s with keys that are < x
       - r is the set of bindings of s with keys that are > x
       - present is None if s contains no key equal to x,
-        or Some(data) if  s contains a key equal to x bound to data 
+	or Some(data) if  s contains a key equal to x bound to data
   *)
   let rec split key = function
     Emptyzz ->
@@ -461,9 +496,9 @@ module Make(Setkey : Sette.S) = struct
 	if h1 >= h2 then
 	  if h2 = 1 then add x2 d2 m1 else begin
 	    let (l2, pres, r2) = split x1 m2 in
-	    join 
-	      (addmap l1 l2) 
-	      x1 
+	    join
+	      (addmap l1 l2)
+	      x1
 	      (match pres with None -> d1 | Some d2 -> d2)
 	      (addmap r1 r2)
 	  end
@@ -484,6 +519,20 @@ module Make(Setkey : Sette.S) = struct
 	    concat (common l1 l2) (common r1 r2)
 	| (l2, (Some d2), r2) ->
 	    join (common l1 l2) x1 (f d1 d2) (common r1 r2)
+  in
+  common m1 m2
+
+  let commoni f m1 m2 =
+    let rec common m1 m2 =
+    match (m1, m2) with
+    | (Emptyzz, t2) -> Emptyzz
+    | (t1, Emptyzz) -> Emptyzz
+    | (Nodezz(l1, x1, d1, r1, _), t2) ->
+	match split x1 t2 with
+	| (l2, None, r2) ->
+	    concat (common l1 l2) (common r1 r2)
+	| (l2, (Some d2), r2) ->
+	    join (common l1 l2) x1 (f x1 d1 d2) (common r1 r2)
   in
   common m1 m2
 
@@ -560,7 +609,7 @@ module Make(Setkey : Sette.S) = struct
 	    compare_aux (cons_enum r1 e1) (cons_enum r2 e2)
     in
     compare_aux (cons_enum m1 End) (cons_enum m2 End)
-      
+
   let equal cmp m1 m2 =
     let rec equal_aux e1 e2 =
       match (e1, e2) with
@@ -573,6 +622,24 @@ module Make(Setkey : Sette.S) = struct
     in
     equal_aux (cons_enum m1 End) (cons_enum m2 End)
 
+  let subset cmp m1 m2 =
+    let rec subset_aux m1 m2 =
+      match (m1, m2) with
+      Emptyzz, _ ->
+        true
+      | _, Emptyzz ->
+          false
+      | Nodezz (l1, v1, d1, r1, _), (Nodezz (l2, v2, d2, r2, _) as t2) ->
+          let c = Setkey.Ord.compare v1 v2 in
+          if c = 0 then
+            cmp d1 d2 && subset_aux l1 l2 && subset_aux r1 r2
+          else if c < 0 then
+            subset_aux (Nodezz (l1, v1, d1, Emptyzz, 0)) l2 && subset_aux r1 t2
+          else
+            subset_aux (Nodezz (Emptyzz, v1, d1, r1, 0)) r2 && subset_aux l1 t2
+    in
+    subset_aux m1 m2
+      
   let rec merge dmerge m1 m2 =
     match (m1, m2) with
     | (Emptyzz, t2) -> t2
@@ -580,23 +647,23 @@ module Make(Setkey : Sette.S) = struct
     | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
 	if h1 >= h2 then
 	  if h2 = 1 then
-	    add 
-	      x2 
+	    add
+	      x2
 	      (if (Setkey.Ord.compare x1 x2) = 0
 	      then dmerge d1 d2
 	      else d2)
 	      m1
 	  else begin
 	    let (l2, pres, r2) = split x1 m2 in
-	    join 
-	      (merge dmerge l1 l2) 
-	      x1 
+	    join
+	      (merge dmerge l1 l2)
+	      x1
 	      (match pres with None -> d1 | Some d2 -> dmerge d1 d2)
 	      (merge dmerge r1 r2)
 	  end
 	else
-	  if h1 = 1 then 
-	    add 
+	  if h1 = 1 then
+	    add
 	      x1
 	      (if (Setkey.Ord.compare x1 x2) = 0
 	      then dmerge d1 d2
@@ -604,13 +671,51 @@ module Make(Setkey : Sette.S) = struct
 	      m2
 	  else begin
 	    let (l1, pres, r1) = split x2 m1 in
-	    join 
-	      (merge dmerge l1 l2) 
-	      x2 
+	    join
+	      (merge dmerge l1 l2)
+	      x2
 	      (match pres with None -> d2 | Some d1 -> dmerge d1 d2)
 	      (merge dmerge r1 r2)
 	  end
-	    
+
+  let rec mergei dmerge m1 m2 =
+    match (m1, m2) with
+    | (Emptyzz, t2) -> t2
+    | (t1, Emptyzz) -> t1
+    | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
+	if h1 >= h2 then
+	  if h2 = 1 then
+	    add
+	      x2
+	      (if (Setkey.Ord.compare x1 x2) = 0
+	      then dmerge x1 d1 d2
+	      else d2)
+	      m1
+	  else begin
+	    let (l2, pres, r2) = split x1 m2 in
+	    join
+	      (mergei dmerge l1 l2)
+	      x1
+	      (match pres with None -> d1 | Some d2 -> dmerge x1 d1 d2)
+	      (mergei dmerge r1 r2)
+	  end
+	else
+	  if h1 = 1 then
+	    add
+	      x1
+	      (if (Setkey.Ord.compare x1 x2) = 0
+	      then dmerge x1 d1 d2
+	      else d1)
+	      m2
+	  else begin
+	    let (l1, pres, r1) = split x2 m1 in
+	    join
+	      (mergei dmerge l1 l2)
+	      x2
+	      (match pres with None -> d2 | Some d1 -> dmerge x1 d1 d2)
+	      (mergei dmerge r1 r2)
+	  end
+
   let print = print
 end
 
@@ -621,23 +726,23 @@ let rec merge dmerge m1 m2 =
   | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
       if h1 >= h2 then
 	if h2 = 1 then
-	  add 
-	    x2 
+	  add
+	    x2
 	    (if (Pervasives.compare x1 x2) = 0
 	    then dmerge d1 d2
 	    else d2)
 	    m1
 	else begin
 	  let (l2, pres, r2) = split x1 m2 in
-	  join 
-	    (merge dmerge l1 l2) 
-	    x1 	      
+	  join
+	    (merge dmerge l1 l2)
+	    x1
 	    (match pres with None -> d1 | Some d2 -> dmerge d1 d2)
 	    (merge dmerge r1 r2)
 	end
       else
-	if h1 = 1 then 
-	  add 
+	if h1 = 1 then
+	  add
 	    x1
 	    (if (Pervasives.compare x1 x2) = 0
 	    then dmerge d1 d2
@@ -645,33 +750,71 @@ let rec merge dmerge m1 m2 =
 	    m2
 	else begin
 	  let (l1, pres, r1) = split x2 m1 in
-	  join 
-	    (merge dmerge l1 l2) 
-	    x2 
+	  join
+	    (merge dmerge l1 l2)
+	    x2
 	    (match pres with None -> d2 | Some d1 -> dmerge d1 d2)
 	    (merge dmerge r1 r2)
 	end
 
-let rec combine 
-  (dcombine: 'b option -> 'c option -> 'd option)
+let rec mergei dmerge m1 m2 =
+  match (m1, m2) with
+  | (Emptyzz, t2) -> t2
+  | (t1, Emptyzz) -> t1
+  | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
+      if h1 >= h2 then
+	if h2 = 1 then
+	  add
+	    x2
+	    (if (Pervasives.compare x1 x2) = 0
+	    then dmerge x1 d1 d2
+	    else d2)
+	    m1
+	else begin
+	  let (l2, pres, r2) = split x1 m2 in
+	  join
+	    (mergei dmerge l1 l2)
+	    x1
+	    (match pres with None -> d1 | Some d2 -> dmerge x1 d1 d2)
+	    (mergei dmerge r1 r2)
+	end
+      else
+	if h1 = 1 then
+	  add
+	    x1
+	    (if (Pervasives.compare x1 x2) = 0
+	    then dmerge x1 d1 d2
+	    else d1)
+	    m2
+	else begin
+	  let (l1, pres, r1) = split x2 m1 in
+	  join
+	    (mergei dmerge l1 l2)
+	    x2
+	    (match pres with None -> d2 | Some d1 -> dmerge x1 d1 d2)
+	    (mergei dmerge r1 r2)
+	end
+
+let rec combine
+  (dcombine: 'a -> 'b option -> 'c option -> 'd option)
   (m1:('a,'b) t)
   (m2:('a,'c) t)
   :
   ('a,'d) t
   =
   match (m1, m2) with
-  | (Emptyzz, t2) -> 
-      fold 
-      (fun k d res -> 
-	match dcombine None (Some d) with
+  | (Emptyzz, t2) ->
+      fold
+      (fun k d res ->
+	match dcombine k None (Some d) with
 	| None -> res
 	| Some d -> add k d res
       )
       t2 empty
-  | (t1, Emptyzz) -> 
-      fold 
-      (fun k d res -> 
-	match dcombine (Some d) None with
+  | (t1, Emptyzz) ->
+      fold
+      (fun k d res ->
+	match dcombine k (Some d) None with
 	| None -> res
 	| Some d -> add k d res
       )
@@ -679,13 +822,13 @@ let rec combine
   | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
       if h1 >= h2 then
 	if h2 = 1 then
-	  let od1 = 
-	    if (Pervasives.compare x1 x2) = 0 then Some d1 else None 
+	  let od1 =
+	    if (Pervasives.compare x1 x2) = 0 then Some d1 else None
 	  in
-	  let data = dcombine od1 (Some d2) in
-	  let m1 = fold 
-	    (fun k d res -> 
-	      match dcombine (Some d) None with
+	  let data = dcombine x2 od1 (Some d2) in
+	  let m1 = fold
+	    (fun k d res ->
+	      match dcombine k (Some d) None with
 	      | None -> res
 	      | Some d -> add k d res
 	    )
@@ -698,25 +841,25 @@ let rec combine
 	      add x2 d m1
 	else begin
 	  let (l2, pres, r2) = split x1 m2 in
-	  let data = dcombine (Some d1) pres in
+	  let data = dcombine x1 (Some d1) pres in
 	  match data with
 	  | None ->
 	      concat (combine dcombine l1 l2) (combine dcombine r1 r2)
 	  | Some d ->
-	      join 
-	      (combine dcombine l1 l2) 
-	      x1 d 
+	      join
+	      (combine dcombine l1 l2)
+	      x1 d
 	      (combine dcombine r1 r2)
 	end
       else
-	if h1 = 1 then 
-	  let od2 = 
-	    if (Pervasives.compare x1 x2) = 0 then Some d2 else None 
+	if h1 = 1 then
+	  let od2 =
+	    if (Pervasives.compare x1 x2) = 0 then Some d2 else None
 	  in
-	  let data = dcombine (Some d1) od2 in
-	  let m2 = fold 
-	    (fun k d res -> 
-	      match dcombine None (Some d) with
+	  let data = dcombine x1 (Some d1) od2 in
+	  let m2 = fold
+	    (fun k d res ->
+	      match dcombine k None (Some d) with
 	      | None -> res
 	      | Some d -> add k d res
 	    )
@@ -728,14 +871,14 @@ let rec combine
 	  | Some d ->
 	      add x1 d m2
 	else begin
-	  let (l1, pres, r1) = split x2 m1 in
-	  let data = dcombine pres (Some d2)in
+	  let (l1, pres, r1) = split x2 m1 in 
+	  let data = dcombine x2 pres (Some d2)in
 	  match data with
 	  | None ->
 	      concat (combine dcombine l1 l2) (combine dcombine r1 r2)
 	  | Some d ->
-	      join 
-	      (combine dcombine l1 l2) 
-	      x2 d 
+	      join
+	      (combine dcombine l1 l2)
+	      x2 d
 	      (combine dcombine r1 r2)
 	end

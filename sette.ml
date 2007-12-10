@@ -29,8 +29,7 @@ let repr : 'a t -> 'a tzz = Obj.magic
 let obj : 'a tzz -> 'a t = Obj.magic
 
 let height = function
-  | Emptyzz -> 
-0
+  | Emptyzz -> 0
   | Nodezz(_, _, _, h) -> h
 
 (** Creates a new node with left son l, value v and right son r.  We must have

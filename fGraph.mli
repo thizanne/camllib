@@ -23,6 +23,7 @@ val edges : ('a,'b,'c,'d) t -> ('a * 'a) Sette.t
 
 val map_vertex : ('a,'b,'c,'d) t -> ('a -> 'b -> pred:'a Sette.t -> succ:'a Sette.t -> 'e) -> ('a, 'e, 'c, 'd) t
 val map_edge : ('a,'b,'c,'d) t -> ('a * 'a -> 'c -> 'e) -> ('a, 'b, 'e, 'd) t
+val map_info : ('a,'b,'c,'d) t -> ('d -> 'e) -> ('a, 'b, 'c, 'e) t
 val map : 
   ('a,'b,'c,'d) t ->
   ('a -> 'b -> pred:'a Sette.t -> succ:'a Sette.t -> 'bb) ->
@@ -30,7 +31,7 @@ val map :
   ('d -> 'dd) ->
   ('a,'bb,'cc,'dd) t
 
-val transpose : 
+val transpose :
   ('a,'b,'c,'d) t ->
   ('a -> 'b -> pred:'a Sette.t -> succ:'a Sette.t -> 'bb) ->
   ('a * 'a -> 'c -> 'cc) ->
@@ -51,6 +52,9 @@ val topological_sort_multi : 'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a list
 val reachable : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
 val reachable_multi :
   'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a Sette.t
+val coreachable : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
+val coreachable_multi :
+  'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a Sette.t
 val cfc : ('a,'b,'c,'d) t -> 'a -> 'a list list
 val cfc_multi : 'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a list list
 val scfc : ('a,'b,'c,'d) t -> 'a -> 'a Ilist.t
@@ -63,6 +67,15 @@ val print :
   (Format.formatter -> 'c -> unit) -> 
   (Format.formatter -> 'd -> unit) -> 
    Format.formatter -> ('a,'b,'c,'d) t -> unit
+val print_dot :
+  ?titlestyle:string ->
+  ?vertexstyle:string ->
+  ?edgestyle:string ->
+  ?title:string ->
+  (Format.formatter -> 'a -> unit) ->
+  (Format.formatter -> 'a -> 'b -> unit) ->
+  (Format.formatter -> 'a * 'a -> 'c -> unit) ->
+  Format.formatter -> ('a,'b,'c,'d) t -> unit
 
 type ('a,'b) nodezz = {
     succzz: 'a Sette.t;
@@ -124,13 +137,14 @@ module type S = sig
 
   val map_vertex : ('b,'c,'d) t -> (vertex -> 'b -> pred:SetV.t -> succ:SetV.t -> 'e) -> ('e, 'c,'d) t
   val map_edge : ('b,'c,'d) t -> (vertex * vertex -> 'c -> 'e) -> ('b, 'e, 'd) t
+  val map_info : ('b,'c,'d) t -> ('d -> 'e) -> ('b,'c,'e) t
   val map :
     ('b,'c,'d) t ->
     (vertex -> 'b -> pred:SetV.t -> succ:SetV.t -> 'bb) ->
     (vertex * vertex -> 'c -> 'cc) ->
     ('d -> 'dd) ->
     ('bb,'cc,'dd) t
-  val transpose : 
+  val transpose :
     ('b,'c,'d) t ->
     (vertex -> 'b -> pred:SetV.t -> succ:SetV.t -> 'bb) ->
     (vertex * vertex -> 'c -> 'cc) ->
@@ -148,7 +162,10 @@ module type S = sig
   val topological_sort_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex list
   val reachable : ('b,'c,'d) t -> vertex -> SetV.t
   val reachable_multi :
-  vertex -> ('b,'c,'d) t -> SetV.t -> SetV.t
+    vertex -> ('b,'c,'d) t -> SetV.t -> SetV.t
+  val coreachable : ('b,'c,'d) t -> vertex -> SetV.t
+  val coreachable_multi :
+    vertex -> ('b,'c,'d) t -> SetV.t -> SetV.t
   val cfc : ('b,'c,'d) t -> vertex -> vertex list list
   val cfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex list list
   val scfc : ('b,'c,'d) t -> vertex -> vertex Ilist.t
@@ -160,6 +177,15 @@ module type S = sig
     (Format.formatter -> 'b -> unit) -> 
     (Format.formatter -> 'c -> unit) -> 
     (Format.formatter -> 'd -> unit) -> 
+    Format.formatter -> ('b,'c,'d) t -> unit
+  val print_dot :
+    ?titlestyle:string ->
+    ?vertexstyle:string ->
+    ?edgestyle:string ->
+    ?title:string ->
+    (Format.formatter -> vertex -> unit) ->
+    (Format.formatter -> vertex -> 'b -> unit) ->
+    (Format.formatter -> vertex*vertex -> 'c -> unit) ->
     Format.formatter -> ('b,'c,'d) t -> unit
 
   type 'b nodezz = {

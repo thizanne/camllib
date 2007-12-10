@@ -37,8 +37,8 @@ let is_edge g arc =
   try let _ = Mappe.find arc g.arcs in true
   with Not_found -> false
 
-let vertices g = Mappe.fold (fun v nv set -> Sette.add v set) g.nodes Sette.empty
-let edges g = Mappe.fold (fun arc attredge set -> Sette.add arc set) g.arcs Sette.empty
+let vertices g = Mappe.maptoset g.nodes
+let edges g = Mappe.maptoset g.arcs
 
 let map_vertex g f = { g with
   nodes =
@@ -54,6 +54,10 @@ let map_edge g f = { g with
 let iter_edge g f = Mappe.iter f g.arcs
 let fold_edge g r f = Mappe.fold f g.arcs r
 
+let map_info g f = { g with
+  info = f g.info
+}
+
 let map g mapvertex mapedge mapinfo = {
   nodes = Mappe.mapi
   (fun v node -> { node with
@@ -66,7 +70,7 @@ let map g mapvertex mapedge mapinfo = {
 
 let transpose g mapvertex mapedge mapinfo = {
   nodes = Mappe.mapi
-  (fun v node -> { 
+  (fun v node -> {
     succ = node.pred;
     pred = node.succ;
     attrvertex = mapvertex v node.attrvertex ~pred:node.pred ~succ:node.succ;
@@ -132,10 +136,10 @@ let add_vertex g v attrvertex =
   with Not_found ->
     { g with nodes = Mappe.add v { succ = Sette.empty; pred = Sette.empty; attrvertex = attrvertex } g.nodes; }
 
-let remove_vertex g v = 
-  let nodev = 
+let remove_vertex g v =
+  let nodev =
     try node g v
-    with Not_found -> 
+    with Not_found ->
       raise (Failure "FGraph.remove_vertex")
   in
   let nodes = Mappe.remove v g.nodes in
@@ -143,19 +147,19 @@ let remove_vertex g v =
     Sette.fold
       (begin fun succ nodes ->
 	let nsucc = node g succ in
-	Mappe.add 
+	Mappe.add
 	  succ
 	  { nsucc with pred = Sette.remove v nsucc.pred }
 	  nodes
       end)
-      nodev.succ 
+      nodev.succ
       nodes
   in
   let nodes =
     Sette.fold
       (begin fun pred nodes ->
 	let npred = node g pred in
-	Mappe.add 
+	Mappe.add
 	  pred
 	  { npred with succ = Sette.remove v npred.succ }
 	  nodes
@@ -163,13 +167,13 @@ let remove_vertex g v =
       nodev.pred
       nodes
   in
-  let arcs = 
+  let arcs =
     Sette.fold
       (fun succ arcs -> Mappe.remove (v,succ) arcs)
       nodev.succ
       g.arcs;
   in
-  let arcs = 
+  let arcs =
     Sette.fold
       (fun pred arcs -> Mappe.remove (pred,v) arcs)
       nodev.pred
@@ -178,7 +182,7 @@ let remove_vertex g v =
   {
     nodes = nodes;
     arcs = arcs;
-    info = g.info; 
+    info = g.info;
   }
 
 (* fonctions auxiliaires *)
@@ -247,6 +251,35 @@ let reachable g root =
 let reachable_multi root g sroot =
   let nodes = squelette_multi root (fun () -> ref false) g sroot in
   reachable_aux root nodes g
+
+(* retourne les sommets no coaccessibles a partir d'un sommet *)
+let coreachable_aux root nodes g =
+  let rec visit v =
+    let nv = Mappe.find v nodes in
+    if not !(nv.attrvertex) then
+      begin
+	nv.attrvertex := true;
+	Sette.iter visit nv.pred
+      end
+  in
+  visit root ;
+  Mappe.fold
+    (begin fun v nv removed ->
+      if !((Mappe.find v nodes).attrvertex) then
+	removed
+      else
+	Sette.add v removed;
+    end)
+    g.nodes
+    Sette.empty
+
+let coreachable g root =
+  let nodes = squelette (fun () -> ref false) g in
+  coreachable_aux root nodes g
+
+let coreachable_multi root g sroot =
+  let nodes = squelette_multi root (fun () -> ref false) g sroot in
+  coreachable_aux root nodes g
 
 (* composantes fortement connexes *)
 let cfc_aux root nodes =
@@ -399,6 +432,36 @@ let print print_vertex print_attrvertex print_attredge print_info formatter g =
   ;
   ()
 
+let print_dot
+  ?(titlestyle:string="shape=ellipse,style=bold,style=filled,fontsize=20")
+  ?(vertexstyle:string="shape=ellipse,fontsize=12")
+  ?(edgestyle:string="fontsize=12")
+  ?(title:string="")
+  print_vertex print_attrvertex print_attredge
+  fmt g
+  =
+  fprintf fmt "digraph G {@.  @[<v>";
+  if title<>"" then
+    fprintf fmt "1073741823 [%s,label=\"%s\"];@ " titlestyle title;
+  Mappe.iter
+    (begin fun vertex node ->
+      fprintf fmt "%a [%s,label=\"%t\"];@ "
+      print_vertex vertex
+      vertexstyle
+      (fun fmt -> print_attrvertex fmt vertex node.attrvertex);
+    end)
+    g.nodes;
+  Mappe.iter
+    (begin fun ((pred,succ) as edge) attredge ->
+      fprintf fmt "%a -> %a [%s,label=\"%t\"];@ "
+      print_vertex pred print_vertex succ
+      edgestyle
+      (fun fmt -> print_attredge fmt edge attredge);
+    end)
+    g.arcs;
+  fprintf fmt "@]@.}@.";
+  ()
+
 type ('a,'b) nodezz = {
     succzz: 'a Sette.t;
     predzz: 'a Sette.t;
@@ -460,13 +523,14 @@ module type S = sig
 
   val map_vertex : ('b,'c,'d) t -> (vertex -> 'b -> pred:SetV.t -> succ:SetV.t -> 'e) -> ('e, 'c,'d) t
   val map_edge : ('b,'c,'d) t -> (vertex * vertex -> 'c -> 'e) -> ('b, 'e, 'd) t
+  val map_info : ('b,'c,'d) t -> ('d -> 'e) -> ('b,'c,'e) t
   val map :
     ('b,'c,'d) t ->
     (vertex -> 'b -> pred:SetV.t -> succ:SetV.t -> 'bb) ->
     (vertex * vertex -> 'c -> 'cc) ->
     ('d -> 'dd) ->
     ('bb,'cc,'dd) t
-  val transpose : 
+  val transpose :
     ('b,'c,'d) t ->
     (vertex -> 'b -> pred:SetV.t -> succ:SetV.t -> 'bb) ->
     (vertex * vertex -> 'c -> 'cc) ->
@@ -486,6 +550,9 @@ module type S = sig
   val reachable : ('b,'c,'d) t -> vertex -> SetV.t
   val reachable_multi :
   vertex -> ('b,'c,'d) t -> SetV.t -> SetV.t
+  val coreachable : ('b,'c,'d) t -> vertex -> SetV.t
+  val coreachable_multi :
+  vertex -> ('b,'c,'d) t -> SetV.t -> SetV.t
   val cfc : ('b,'c,'d) t -> vertex -> vertex list list
   val cfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex list list
   val scfc : ('b,'c,'d) t -> vertex -> vertex Ilist.t
@@ -493,10 +560,19 @@ module type S = sig
   val min : ('b,'c,'d) t -> SetV.t
   val max : ('b,'c,'d) t -> SetV.t
   val print :
-    (Format.formatter -> vertex -> unit) -> 
-    (Format.formatter -> 'b -> unit) -> 
-    (Format.formatter -> 'c -> unit) -> 
-    (Format.formatter -> 'd -> unit) -> 
+    (Format.formatter -> vertex -> unit) ->
+    (Format.formatter -> 'b -> unit) ->
+    (Format.formatter -> 'c -> unit) ->
+    (Format.formatter -> 'd -> unit) ->
+    Format.formatter -> ('b,'c,'d) t -> unit
+  val print_dot :
+    ?titlestyle:string ->
+    ?vertexstyle:string ->
+    ?edgestyle:string ->
+    ?title:string ->
+    (Format.formatter -> vertex -> unit) ->
+    (Format.formatter -> vertex -> 'b -> unit) ->
+    (Format.formatter -> vertex*vertex -> 'c -> unit) ->
     Format.formatter -> ('b,'c,'d) t -> unit
 
   type 'b nodezz = {
@@ -558,8 +634,8 @@ struct
     try let _ = MapE.find arc g.arcs in true
     with Not_found -> false
 
-  let vertices g = MapV.fold (fun v nv set -> SetV.add v set) g.nodes SetV.empty
-  let edges g = MapE.fold (fun arc attredge set -> SetE.add arc set) g.arcs SetE.empty
+  let vertices g = MapV.maptoset g.nodes
+  let edges g = MapE.maptoset g.arcs
 
   let map_vertex g f = { g with
     nodes =
@@ -576,6 +652,10 @@ struct
   let iter_edge g f = MapE.iter f g.arcs
   let fold_edge g r f = MapE.fold f g.arcs r
 
+  let map_info g f = { g with
+    info = f g.info
+  }
+
   let map g mapvertex mapedge mapinfo = {
     nodes = MapV.mapi
     (fun v node -> { node with
@@ -588,7 +668,7 @@ struct
 
   let transpose g mapvertex mapedge mapinfo = {
     nodes = MapV.mapi
-    (fun v node -> { 
+    (fun v node -> {
       succ = node.pred;
       pred = node.succ;
       attrvertex = mapvertex v node.attrvertex ~pred:node.pred ~succ:node.succ;
@@ -654,10 +734,10 @@ struct
     with Not_found ->
       { g with nodes = MapV.add v { succ = SetV.empty; pred = SetV.empty; attrvertex = attrvertex } g.nodes; }
 
-  let remove_vertex g v = 
-    let nodev = 
+  let remove_vertex g v =
+    let nodev =
       try node g v
-      with Not_found -> 
+      with Not_found ->
 	raise (Failure "FGraph.remove_vertex")
     in
     let nodes = MapV.remove v g.nodes in
@@ -665,19 +745,19 @@ struct
       SetV.fold
 	(begin fun succ nodes ->
 	  let nsucc = node g succ in
-	  MapV.add 
+	  MapV.add
 	    succ
 	    { nsucc with pred = SetV.remove v nsucc.pred }
 	    nodes
 	end)
-	nodev.succ 
+	nodev.succ
 	nodes
     in
     let nodes =
       SetV.fold
 	(begin fun pred nodes ->
 	  let npred = node g pred in
-	  MapV.add 
+	  MapV.add
 	    pred
 	    { npred with succ = SetV.remove v npred.succ }
 	    nodes
@@ -685,13 +765,13 @@ struct
 	nodev.pred
 	nodes
     in
-    let arcs = 
+    let arcs =
       SetV.fold
 	(fun succ arcs -> MapE.remove (v,succ) arcs)
 	nodev.succ
 	g.arcs;
     in
-    let arcs = 
+    let arcs =
       SetV.fold
 	(fun pred arcs -> MapE.remove (pred,v) arcs)
 	nodev.pred
@@ -700,7 +780,7 @@ struct
     {
       nodes = nodes;
       arcs = arcs;
-      info = g.info; 
+      info = g.info;
     }
 
   (* fonctions auxiliaires *)
@@ -740,7 +820,6 @@ struct
     let nodes = squelette_multi root  (fun () -> ref false) g sroot in
     List.tl (topological_sort_aux root nodes)
 
-
   (* retourne les sommets inaccessibles a partir d'un sommet *)
   let reachable_aux root nodes g =
     let rec visit v =
@@ -769,6 +848,35 @@ struct
   let reachable_multi root g sroot =
     let nodes = squelette_multi root (fun () -> ref false) g sroot in
     reachable_aux root nodes g
+
+  (* retourne les sommets non coaccessibles a partir d'un sommet *)
+  let coreachable_aux root nodes g =
+    let rec visit v =
+      let nv = MapV.find v nodes in
+      if not !(nv.attrvertex) then
+	begin
+	nv.attrvertex := true;
+	SetV.iter visit nv.pred
+	end
+    in
+    visit root ;
+    MapV.fold
+      (begin fun v nv removed ->
+	if !((MapV.find v nodes).attrvertex) then
+	removed
+	else
+	SetV.add v removed;
+      end)
+      g.nodes
+      SetV.empty
+
+  let coreachable g root =
+    let nodes = squelette (fun () -> ref false) g in
+    coreachable_aux root nodes g
+
+  let coreachable_multi root g sroot =
+    let nodes = squelette_multi root (fun () -> ref false) g sroot in
+    coreachable_aux root nodes g
 
   (* composantes fortement connexes *)
   let cfc_aux root nodes =
@@ -919,6 +1027,36 @@ struct
       g.arcs
       print_info g.info
     ;
+    ()
+
+  let print_dot
+    ?(titlestyle:string="shape=ellipse,style=bold,style=filled,fontsize=20")
+    ?(vertexstyle:string="shape=ellipse,fontsize=12")
+    ?(edgestyle:string="fontsize=12")
+    ?(title:string="")
+    print_vertex print_attrvertex print_attredge
+    fmt g
+    =
+    fprintf fmt "digraph G {@.  @[<v>";
+    if title<>"" then
+      fprintf fmt "1073741823 [%s,label=\"%s\"];@ " titlestyle title;
+    MapV.iter
+      (begin fun vertex node ->
+	fprintf fmt "%a [%s,label=\"%t\"];@ "
+	print_vertex vertex
+	vertexstyle
+	(fun fmt -> print_attrvertex fmt vertex node.attrvertex);
+      end)
+      g.nodes;
+    MapE.iter
+      (begin fun ((pred,succ) as edge) attredge ->
+	fprintf fmt "%a -> %a [%s,label=\"%t\"];@ "
+	print_vertex pred print_vertex succ
+	edgestyle
+	(fun fmt -> print_attredge fmt edge attredge);
+      end)
+      g.arcs;
+    fprintf fmt "@]@.}@.";
     ()
 
 
