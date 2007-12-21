@@ -109,25 +109,28 @@ let add_edge g ((a,b) as arc) attredge =
   with Not_found -> failwith "FGraph.add_edge"
 
 let remove_edge g ((a,b) as arc) =
-  try {
-    nodes = begin
-      let na = node g a in
-      if a=b then
-	Mappe.add a
-	  { succ = Sette.remove a na.succ; pred = Sette.remove a na.pred; attrvertex = na.attrvertex }
-	  g.nodes
-      else
-	let nb = node g b in
-	Mappe.add a
-	  { succ = Sette.remove b na.succ; pred = na.pred; attrvertex = na.attrvertex }
-	  (Mappe.add b
-	    { succ = nb.succ; pred = Sette.remove a nb.pred; attrvertex = nb.attrvertex }
-	    g.nodes)
-    end;
-    arcs = Mappe.remove arc g.arcs;
-    info = g.info;
-  }
-  with Not_found -> failwith "FGraph.remove_edge"
+  if Mappe.mem arc g.arcs then
+    try {
+      nodes = begin
+	let na = node g a in
+	if a=b then
+	  Mappe.add a
+	    { succ = Sette.remove a na.succ; pred = Sette.remove a na.pred; attrvertex = na.attrvertex }
+	    g.nodes
+	else
+	  let nb = node g b in
+	  Mappe.add a
+	    { succ = Sette.remove b na.succ; pred = na.pred; attrvertex = na.attrvertex }
+	    (Mappe.add b
+	      { succ = nb.succ; pred = Sette.remove a nb.pred; attrvertex = nb.attrvertex }
+	      g.nodes)
+      end;
+      arcs = Mappe.remove arc g.arcs;
+      info = g.info;
+    }
+    with Not_found -> failwith "FGraph.remove_edge"
+  else
+    g
 
 let add_vertex g v attrvertex =
   try
@@ -146,10 +149,14 @@ let remove_vertex g v =
   let nodes =
     Sette.fold
       (begin fun succ nodes ->
-	let nsucc = node g succ in
-	Mappe.add
-	  succ
-	  { nsucc with pred = Sette.remove v nsucc.pred }
+	if succ<>v then begin
+	  let nsucc = Mappe.find succ nodes in
+	  Mappe.add
+	    succ
+	    { nsucc with pred = Sette.remove v nsucc.pred }
+	    nodes
+	end
+	else
 	  nodes
       end)
       nodev.succ
@@ -158,10 +165,14 @@ let remove_vertex g v =
   let nodes =
     Sette.fold
       (begin fun pred nodes ->
-	let npred = node g pred in
-	Mappe.add
-	  pred
-	  { npred with succ = Sette.remove v npred.succ }
+	if pred<>v then begin
+	  let npred = Mappe.find pred nodes in
+	  Mappe.add
+	    pred
+	    { npred with succ = Sette.remove v npred.succ }
+	    nodes
+	end
+	else
 	  nodes
       end)
       nodev.pred
@@ -722,25 +733,28 @@ struct
     with Not_found -> failwith "FGraph.add_edge"
 
   let remove_edge g ((a,b) as arc) =
-    try {
-      nodes = begin
-	let na = node g a in
-	if a=b then
-	  MapV.add a
-	    { succ = SetV.remove a na.succ; pred = SetV.remove a na.pred; attrvertex = na.attrvertex }
-	    g.nodes
-	else
-	  let nb = node g b in
-	  MapV.add a
-	    { succ = SetV.remove b na.succ; pred = na.pred; attrvertex = na.attrvertex }
-	    (MapV.add b
-	      { succ = nb.succ; pred = SetV.remove a nb.pred; attrvertex = nb.attrvertex }
-	      g.nodes)
-      end;
-      arcs = MapE.remove arc g.arcs;
-      info = g.info;
-    }
-    with Not_found -> failwith "FGraph.remove_edge"
+    if MapE.mem arc g.arcs then
+      try {
+	nodes = begin
+	  let na = node g a in
+	  if a=b then
+	    MapV.add a
+	      { succ = SetV.remove a na.succ; pred = SetV.remove a na.pred; attrvertex = na.attrvertex }
+	      g.nodes
+	  else
+	    let nb = node g b in
+	    MapV.add a
+	      { succ = SetV.remove b na.succ; pred = na.pred; attrvertex = na.attrvertex }
+	      (MapV.add b
+		{ succ = nb.succ; pred = SetV.remove a nb.pred; attrvertex = nb.attrvertex }
+		g.nodes)
+	end;
+	arcs = MapE.remove arc g.arcs;
+	info = g.info;
+      }
+      with Not_found -> failwith "FGraph.remove_edge"
+    else 
+      g
 
   let add_vertex g v attrvertex =
     try
@@ -759,10 +773,14 @@ struct
     let nodes =
       SetV.fold
 	(begin fun succ nodes ->
-	  let nsucc = node g succ in
-	  MapV.add
-	    succ
-	    { nsucc with pred = SetV.remove v nsucc.pred }
+	  if (SetV.Ord.compare succ v) <> 0 then begin
+	    let nsucc = MapV.find succ nodes in
+	    MapV.add
+	      succ
+	      { nsucc with pred = SetV.remove v nsucc.pred }
+	      nodes
+	  end
+	  else
 	    nodes
 	end)
 	nodev.succ
@@ -771,10 +789,14 @@ struct
     let nodes =
       SetV.fold
 	(begin fun pred nodes ->
-	  let npred = node g pred in
-	  MapV.add
-	    pred
-	    { npred with succ = SetV.remove v npred.succ }
+	  if (SetV.Ord.compare pred v) <> 0 then begin
+	    let npred = MapV.find pred nodes in
+	    MapV.add
+	      pred
+	      { npred with succ = SetV.remove v npred.succ }
+	      nodes
+	  end
+	  else
 	    nodes
 	end)
 	nodev.pred
