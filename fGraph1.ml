@@ -85,17 +85,20 @@ let add_edge g ((a,b) as arc) attredge =
   with Not_found -> failwith "FGraph1.add_edge"
 
 let remove_edge g ((a,b) as arc) =
-  try {
-    nodes = begin
-      let na = node g a in
-      Mappe.add a
-	{ succ = Sette.remove b na.succ; attrvertex = na.attrvertex }
-	g.nodes
-    end;
-    arcs = Mappe.remove arc g.arcs;
-    info = g.info;
-  }
-  with Not_found -> failwith "FGraph1.remove_edge"
+  if Mappe.mem arc g.arcs then
+    try {
+      nodes = begin
+	let na = node g a in
+	Mappe.add a
+	  { succ = Sette.remove b na.succ; attrvertex = na.attrvertex }
+	  g.nodes
+      end;
+      arcs = Mappe.remove arc g.arcs;
+      info = g.info;
+    }
+    with Not_found -> failwith "FGraph1.remove_edge"
+  else 
+    g
 
 let add_vertex g v attrvertex =
   try
@@ -522,17 +525,20 @@ struct
     with Not_found -> failwith "FGraph1.add_edge"
 
   let remove_edge g ((a,b) as arc) =
-    try {
-      nodes = begin
-	let na = node g a in
-	MapV.add a
-	  { succ = SetV.remove b na.succ; attrvertex = na.attrvertex }
-	  g.nodes
-      end;
-      arcs = MapE.remove arc g.arcs;
-      info = g.info;
-    }
-    with Not_found -> failwith "FGraph1.remove_edge"
+    if MapE.mem arc g.arcs then
+      try {
+	nodes = begin
+	  let na = node g a in
+	  MapV.add a
+	    { succ = SetV.remove b na.succ; attrvertex = na.attrvertex }
+	    g.nodes
+	end;
+	arcs = MapE.remove arc g.arcs;
+	info = g.info;
+      }
+      with Not_found -> failwith "FGraph1.remove_edge"
+    else 
+      g
 
   let add_vertex g v attrvertex =
   try
