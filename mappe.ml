@@ -272,6 +272,7 @@ let partition p m =
 let rec cardinal = function
     Emptyzz -> 0
   | Nodezz(l, v, d, r, _) -> cardinal l + 1 + cardinal r
+let choose = min_binding
 
 type ('a,'b) enumeration = End | More of 'a * 'b * ('a,'b) t * ('a,'b) enumeration
 
@@ -295,6 +296,21 @@ let compare cmp m1 m2 =
   in
   compare_aux (cons_enum m1 End) (cons_enum m2 End)
 
+let comparei cmp m1 m2 =
+  let rec compare_aux e1 e2 =
+    match (e1, e2) with
+    | (End, End) -> 0
+    | (End, _)  -> -1
+    | (_, End) -> 1
+    | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
+	let c = Pervasives.compare v1 v2 in
+	if c <> 0 then c else
+	  let c = cmp v1 d1 d2 in
+	  if c <> 0 then c else
+	    compare_aux (cons_enum r1 e1) (cons_enum r2 e2)
+  in
+  compare_aux (cons_enum m1 End) (cons_enum m2 End)
+
 let equal cmp m1 m2 =
   let rec equal_aux e1 e2 =
     match (e1, e2) with
@@ -303,6 +319,18 @@ let equal cmp m1 m2 =
     | (_, End) -> false
     | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
 	Pervasives.compare v1 v2 = 0 && cmp d1 d2 &&
+    equal_aux (cons_enum r1 e1) (cons_enum r2 e2)
+  in
+  equal_aux (cons_enum m1 End) (cons_enum m2 End)
+
+let equali cmp m1 m2 =
+  let rec equal_aux e1 e2 =
+    match (e1, e2) with
+    (End, End) -> true
+    | (End, _)  -> false
+    | (_, End) -> false
+    | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
+	Pervasives.compare v1 v2 = 0 && cmp v1 d1 d2 &&
     equal_aux (cons_enum r1 e1) (cons_enum r2 e2)
   in
   equal_aux (cons_enum m1 End) (cons_enum m2 End)
@@ -318,6 +346,24 @@ let subset cmp m1 m2 =
           let c = Pervasives.compare v1 v2 in
           if c = 0 then
             cmp d1 d2 && subset_aux l1 l2 && subset_aux r1 r2
+          else if c < 0 then
+            subset_aux (Nodezz (l1, v1, d1, Emptyzz, 0)) l2 && subset_aux r1 t2
+          else
+            subset_aux (Nodezz (Emptyzz, v1, d1, r1, 0)) r2 && subset_aux l1 t2
+  in
+  subset_aux m1 m2
+
+let subseti cmp m1 m2 =
+  let rec subset_aux m1 m2 =
+      match (m1, m2) with
+        Emptyzz, _ ->
+          true
+      | _, Emptyzz ->
+          false
+      | Nodezz (l1, v1, d1, r1, _), (Nodezz (l2, v2, d2, r2, _) as t2) ->
+          let c = Pervasives.compare v1 v2 in
+          if c = 0 then
+            cmp v1 d1 d2 && subset_aux l1 l2 && subset_aux r1 r2
           else if c < 0 then
             subset_aux (Nodezz (l1, v1, d1, Emptyzz, 0)) l2 && subset_aux r1 t2
           else
@@ -380,11 +426,15 @@ module type S = sig
   val maptoset : 'a t -> Setkey.t
   val mapofset: (key -> 'a) -> Setkey.t -> 'a t
   val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
+  val comparei : (key -> 'a -> 'a -> int) -> 'a t -> 'a t -> int
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  val equali : (key -> 'a -> 'a -> bool) -> 'a t -> 'a t -> bool
   val subset : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  val subseti : (key -> 'a -> 'a -> bool) -> 'a t -> 'a t -> bool
   val filter: (key -> 'a -> bool) -> 'a t -> 'a t
   val partition: (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
   val cardinal : 'a t -> int
+  val choose : 'a t -> key * 'a
   val print :
     ?first:(unit, Format.formatter, unit) format ->
     ?sep:(unit, Format.formatter, unit) format ->
@@ -587,6 +637,7 @@ module Make(Setkey : Sette.S) = struct
     part (Emptyzz, Emptyzz) m
 
   let cardinal = cardinal
+  let choose = choose
 
   type 'a enumeration = End | More of key * 'a * 'a t * 'a enumeration
 
@@ -610,6 +661,21 @@ module Make(Setkey : Sette.S) = struct
     in
     compare_aux (cons_enum m1 End) (cons_enum m2 End)
 
+  let comparei cmp m1 m2 =
+    let rec compare_aux e1 e2 =
+      match (e1, e2) with
+      | (End, End) -> 0
+      | (End, _)  -> -1
+      | (_, End) -> 1
+    | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
+	let c = Setkey.Ord.compare v1 v2 in
+	if c <> 0 then c else
+	  let c = cmp v1 d1 d2 in
+	  if c <> 0 then c else
+	    compare_aux (cons_enum r1 e1) (cons_enum r2 e2)
+    in
+    compare_aux (cons_enum m1 End) (cons_enum m2 End)
+
   let equal cmp m1 m2 =
     let rec equal_aux e1 e2 =
       match (e1, e2) with
@@ -618,6 +684,18 @@ module Make(Setkey : Sette.S) = struct
       | (_, End) -> false
       | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
 	  Setkey.Ord.compare v1 v2 = 0 && cmp d1 d2 &&
+      equal_aux (cons_enum r1 e1) (cons_enum r2 e2)
+    in
+    equal_aux (cons_enum m1 End) (cons_enum m2 End)
+
+  let equali cmp m1 m2 =
+    let rec equal_aux e1 e2 =
+      match (e1, e2) with
+      (End, End) -> true
+      | (End, _)  -> false
+      | (_, End) -> false
+      | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
+	  Setkey.Ord.compare v1 v2 = 0 && cmp v1 d1 d2 &&
       equal_aux (cons_enum r1 e1) (cons_enum r2 e2)
     in
     equal_aux (cons_enum m1 End) (cons_enum m2 End)
@@ -633,6 +711,24 @@ module Make(Setkey : Sette.S) = struct
           let c = Setkey.Ord.compare v1 v2 in
           if c = 0 then
             cmp d1 d2 && subset_aux l1 l2 && subset_aux r1 r2
+          else if c < 0 then
+            subset_aux (Nodezz (l1, v1, d1, Emptyzz, 0)) l2 && subset_aux r1 t2
+          else
+            subset_aux (Nodezz (Emptyzz, v1, d1, r1, 0)) r2 && subset_aux l1 t2
+    in
+    subset_aux m1 m2
+      
+  let subseti cmp m1 m2 =
+    let rec subset_aux m1 m2 =
+      match (m1, m2) with
+      Emptyzz, _ ->
+        true
+      | _, Emptyzz ->
+          false
+      | Nodezz (l1, v1, d1, r1, _), (Nodezz (l2, v2, d2, r2, _) as t2) ->
+          let c = Setkey.Ord.compare v1 v2 in
+          if c = 0 then
+            cmp v1 d1 d2 && subset_aux l1 l2 && subset_aux r1 r2
           else if c < 0 then
             subset_aux (Nodezz (l1, v1, d1, Emptyzz, 0)) l2 && subset_aux r1 t2
           else

@@ -97,11 +97,14 @@ val mapofset: ('a -> 'b) -> 'a Sette.t -> ('a,'b) t
 	(** [mapofset f s] returns the map associating [f key] to
 	   [key], for each element [key] of the set [s] *)
 val compare: ('b -> 'b -> int) -> ('a,'b) t -> ('a,'b) t -> int
+val comparei: ('a -> 'b -> 'b -> int) -> ('a,'b) t -> ('a,'b) t -> int
 	(** Comparison function between maps,
 	    total if the comparison function for data is total *)
 val equal: ('b -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t -> bool
+val equali: ('a -> 'b -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t -> bool
 	(** equality between maps *)
 val subset: ('b -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t -> bool
+val subseti: ('a -> 'b -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t -> bool
 	(** subset between maps *)
 val filter: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t
 	(** [filter p m] returns the map of all bindings in [m] that satisfy
@@ -113,6 +116,8 @@ val partition: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t * ('a,'b) t
 	  [p]. *)
 val cardinal: ('a,'b) t -> int
 	(** Number of keys of a map *)
+val choose : ('a,'b) t -> 'a * 'b
+        (** Returns a binding, or raise [Not_found] if empty *)
 val print :
     ?first:(unit, Format.formatter, unit) format ->
     ?sep:(unit, Format.formatter, unit) format ->
@@ -154,11 +159,15 @@ module type S = sig
   val maptoset : 'a t -> Setkey.t
   val mapofset: (key -> 'a) -> Setkey.t -> 'a t
   val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
+  val comparei : (key -> 'a -> 'a -> int) -> 'a t -> 'a t -> int
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  val equali : (key -> 'a -> 'a -> bool) -> 'a t -> 'a t -> bool
   val subset : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  val subseti : (key -> 'a -> 'a -> bool) -> 'a t -> 'a t -> bool
   val filter: (key -> 'a -> bool) -> 'a t -> 'a t
   val partition: (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
   val cardinal : 'a t -> int
+  val choose : 'a t -> key * 'a
   val print :
     ?first:(unit, Format.formatter, unit) format ->
     ?sep:(unit, Format.formatter, unit) format ->
