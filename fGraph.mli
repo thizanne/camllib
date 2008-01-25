@@ -14,7 +14,9 @@ val pred : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
 val attrvertex : ('a,'b,'c,'d) t -> 'a -> 'b
 val attredge : ('a,'b,'c,'d) t -> 'a * 'a -> 'c
 val empty : 'd -> ('a,'b,'c,'d) t
-val size : ('a,'b,'c,'d) t -> int
+val size_vertex : ('a,'b,'c,'d) t -> int
+val size_edge : ('a,'b,'c,'d) t -> int
+val size : ('a,'b,'c,'d) t -> int*int
 val is_empty : ('a,'b,'c,'d) t -> bool
 val is_vertex : ('a,'b,'c,'d) t -> 'a -> bool
 val is_edge : ('a,'b,'c,'d) t -> 'a * 'a -> bool
@@ -128,7 +130,9 @@ module type S = sig
   val attrvertex : ('b,'c,'d) t -> vertex -> 'b
   val attredge : ('b,'c,'d) t -> vertex * vertex -> 'c
   val empty : 'd -> ('b,'c,'d) t
-  val size : ('b,'c,'d) t -> int
+  val size_vertex : ('b,'c,'d) t -> int
+  val size_edge : ('b,'c,'d) t -> int
+  val size : ('b,'c,'d) t -> int*int
   val is_empty : ('b,'c,'d) t -> bool
   val is_vertex : ('b,'c,'d) t -> vertex -> bool
   val is_edge : ('b,'c,'d) t -> vertex * vertex -> bool

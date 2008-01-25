@@ -27,7 +27,9 @@ let attrvertex g n = (node g n).attrvertex
 
 let attredge g arc = Mappe.find arc g.arcs
 let empty info = { nodes = Mappe.empty; arcs = Mappe.empty; info=info }
-let size g = Mappe.fold (fun _ _ n -> n+1) g.nodes 0
+let size_vertex g = Mappe.cardinal g.nodes
+let size_edge g = Mappe.cardinal g.arcs
+let size g = (size_vertex g, size_edge g)
 
 let is_empty g = (g.nodes = Mappe.empty)
 let is_vertex g i =
@@ -540,7 +542,9 @@ module type S = sig
   val attrvertex : ('b,'c,'d) t -> vertex -> 'b
   val attredge : ('b,'c,'d) t -> vertex * vertex -> 'c
   val empty : 'd -> ('b,'c,'d) t
-  val size : ('b,'c,'d) t -> int
+  val size_vertex : ('b,'c,'d) t -> int
+  val size_edge : ('b,'c,'d) t -> int
+  val size : ('b,'c,'d) t -> int*int
   val is_empty : ('b,'c,'d) t -> bool
   val is_vertex : ('b,'c,'d) t -> vertex -> bool
   val is_edge : ('b,'c,'d) t -> vertex * vertex -> bool
@@ -650,8 +654,10 @@ struct
 
   let attredge g arc = MapE.find arc g.arcs
   let empty info = { nodes = MapV.empty; arcs = MapE.empty; info = info }
-  let size g = MapV.fold (fun _ _ n -> n+1) g.nodes 0
-
+  let size_vertex g = MapV.cardinal g.nodes
+  let size_edge g = MapE.cardinal g.arcs
+  let size g = (size_vertex g, size_edge g)
+    
   let is_empty g = (g.nodes = MapV.empty)
   let is_vertex g i =
     try let _ = node g i in true
