@@ -848,6 +848,8 @@ module type S = sig
 
   module SetV : (Sette.S with type elt=vertex)
   module SetH : (Sette.S with type elt=hedge)
+  module HashV : (Hashhe.S with type key=vertex)
+  module HashH : (Hashhe.S with type key=hedge)
 
   type ('a,'b,'c) t
     (** Type of hypergraphs, where {ul
@@ -1000,7 +1002,9 @@ end
 module Make(T : T) : (S with type vertex=T.vertex
 			and type hedge=T.hedge
 			and module SetV=T.SetV
-			and module SetH=T.SetH) = struct
+			and module SetH=T.SetH
+			and module HashV=T.HashV
+			and module HashH=T.HashH) = struct
 
   type vertex = T.vertex
   type hedge = T.hedge
