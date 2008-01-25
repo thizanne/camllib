@@ -10,6 +10,9 @@ type ('a,'b) t = {
   yx : ('b,'a) Hashhe.t
 }
 
+let hashx t = t.xy
+let hashy t = t.yx
+
 let clear t = 
   Hashhe.clear t.xy; 
   Hashhe.clear t.yx;
@@ -64,6 +67,8 @@ module type S = sig
   type x = HashX.key
   type y = HashY.key
   type t
+  val hashx : t -> y HashX.t
+  val hashy : t -> x HashY.t
   val clear : t -> unit
   val create : int -> t
   val add : t -> x -> y -> unit
@@ -99,6 +104,8 @@ module Make(P : Param) = struct
     xy : y HashX.t;
     yx : x HashY.t
   }
+  let hashx t = t.xy
+  let hashy t = t.yx
   let clear t = 
     HashX.clear t.xy; 
     HashY.clear t.yx;

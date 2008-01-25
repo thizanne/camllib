@@ -9,6 +9,10 @@ type ('a, 'b) t =
   }
   (** The type of two-way hashtables, meant to be abstract *)
 
+val hashx : ('a,'b) t -> ('a,'b) Hashhe.t
+val hashy : ('a,'b) t -> ('b,'a) Hashhe.t
+  (** Return the correspondance hashtable resp. from x to y and from y to x.
+    Never modify it !!! *)
 val clear : ('a,'b) t -> unit
   (** Clear a table *)
 val create : int -> ('a, 'b) t
@@ -60,6 +64,8 @@ module type S = sig
   type x = HashX.key
   type y = HashY.key
   type t
+  val hashx : t -> y HashX.t
+  val hashy : t -> x HashY.t
   val clear : t -> unit
   val create : int -> t
   val add : t -> x -> y -> unit
