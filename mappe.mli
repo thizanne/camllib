@@ -148,6 +148,7 @@ module type S = sig
   val addmap : 'a t -> 'a t -> 'a t
   val merge : ('a -> 'a -> 'a) -> 'a t -> 'a t -> 'a t
   val mergei : (key -> 'a -> 'a -> 'a) -> 'a t -> 'a t -> 'a t
+  val combine : (key -> 'a option -> 'b option -> 'c option) -> 'a t -> 'b t -> 'c t
   val common : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
   val commoni : (key -> 'a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
   val interset : 'a t -> Setkey.t -> 'a t
