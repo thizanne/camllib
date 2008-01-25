@@ -8,6 +8,9 @@
 
 type ('a, 'b) t
   (** The type of two-way maps *)
+val mapx : ('a,'b) t -> ('a,'b) Mappe.t
+val mapy : ('a,'b) t -> ('b,'a) Mappe.t
+  (** Return the correspondance map resp. from x to y and from y to x. *)
 val empty : ('a, 'b) t
   (** Empty map *)
 val add : 'a -> 'b -> ('a, 'b) t -> ('a, 'b) t
@@ -22,6 +25,20 @@ val memx : 'a -> ('a, 'b) t -> bool
   (** Is the object in the map ? *)
 val memy : 'b -> ('a, 'b) t -> bool
   (** Is the object in the map ? *)
+val merge : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
+  (** Merge the two double associations. If a key is bound to different
+    data in the two arguments, raise [Failure]. *)
+val common : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
+  (** Return the common bindings. If a key is bound to different
+    data in the two arguments, raise [Failure]. *)
+val intersetx : ('a, 'b) t -> 'a Sette.t -> ('a, 'b) t
+  (** Select the two-way bindings [x <->y] with [x] in the set *)
+val intersety : ('a, 'b) t -> 'b Sette.t -> ('a, 'b) t
+  (** Select the two-way bindings [x <->y] with [y] in the set *)
+val diffsetx : ('a, 'b) t -> 'a Sette.t -> ('a, 'b) t
+  (** Remove the two-way bindings [x <->y] with [x] in the set *)
+val diffsety : ('a, 'b) t -> 'b Sette.t -> ('a, 'b) t
+  (** Remove the two-way bindings [x <->y] with [y] in the set *)
 val iter : ('a -> 'b -> unit) -> ('a, 'b) t -> unit
   (** Iterate on bindings. *)
 val fold : ('a -> 'b -> 'c -> 'c) -> ('a, 'b) t -> 'c -> 'c
@@ -30,6 +47,14 @@ val setx : ('a, 'b) t -> 'a Sette.t
   (** Return the set of all objects in the first place of bindings. *)
 val sety : ('a, 'b) t -> 'b Sette.t
   (** Return the set of all objects in the second place of bindings. *)
+val equalx : ('a, 'b) t -> ('a, 'b) t -> bool
+val equaly : ('a, 'b) t -> ('a, 'b) t -> bool
+val subsetx : ('a, 'b) t -> ('a, 'b) t -> bool
+val subsety : ('a, 'b) t -> ('a, 'b) t -> bool
+  (** Test two two-way association for equality and inclusion.  the [x] and [y]
+    variants resp. exploit the tables [x->y] and [y->x].  For (slight)
+    efficieny reason, one can choose one or the other variant.
+*)
 val cardinal : ('a, 'b) t -> int
   (** Return the number of bindings. *)
 val print :
@@ -57,6 +82,8 @@ module type S = sig
   type x = MappeX.key
   type y = MappeY.key
   type t
+  val mapx : t -> y MappeX.t
+  val mapy : t -> x MappeY.t
   val empty : t
   val add : x -> y -> t -> t
   val y_of_x : x -> t -> y
@@ -64,10 +91,20 @@ module type S = sig
   val remove : x -> t -> t 
   val memx : x -> t -> bool
   val memy : y -> t -> bool
+  val merge : t -> t -> t
+  val common : t -> t -> t
+  val intersetx : t -> MappeX.Setkey.t -> t
+  val intersety : t -> MappeY.Setkey.t -> t
+  val diffsetx : t -> MappeX.Setkey.t -> t
+  val diffsety : t -> MappeY.Setkey.t -> t
   val iter : (x -> y -> unit) -> t -> unit
   val fold : (x -> y -> 'c -> 'c) -> t -> 'c -> 'c
   val setx : t -> MappeX.Setkey.t
   val sety : t -> MappeY.Setkey.t
+  val equalx : t -> t -> bool
+  val equaly : t -> t -> bool
+  val subsetx : t -> t -> bool
+  val subsety : t -> t -> bool
   val cardinal : t -> int
   val print :
     ?first:(unit, Format.formatter, unit) format ->
