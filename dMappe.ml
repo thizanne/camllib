@@ -3,12 +3,15 @@
 (** Two-way map between two ordered data types *)
 
 (** The type of two-way maps *)
-type ('a,'b) t = {
+type ('a,'b) map = {
   xy : ('a,'b) Mappe.t;
   yx : ('b,'a) Mappe.t
 }
+type ('a,'b) t = ('a,'b) map
+
 let mapx t = t.xy
 let mapy t = t.yx
+let is_empty t = Mappe.is_empty t.xy
 let empty = { xy = Mappe.empty; yx = Mappe.empty }
 let add x y t = {
   xy = Mappe.add x y t.xy;
@@ -90,8 +93,10 @@ module type S = sig
   type x = MappeX.key
   type y = MappeY.key
   type t
+
   val mapx : t -> y MappeX.t
   val mapy : t -> x MappeY.t
+  val is_empty : t -> bool
   val empty : t
   val add : x -> y -> t -> t
   val y_of_x : x -> t -> y
@@ -139,6 +144,7 @@ module Make(P : Param) = struct
   }
   let mapx t = t.xy
   let mapy t = t.yx
+  let is_empty t = MappeX.is_empty t.xy
   let empty = { xy = MappeX.empty; yx = MappeY.empty }
   let add x y t = {
     xy = MappeX.add x y t.xy;
@@ -204,3 +210,84 @@ module Make(P : Param) = struct
   let print ?first ?sep ?last ?firstbind ?(sepbind = (" <=> ":(unit, Format.formatter, unit) format)) ?lastbind px py fmt t = 
     MappeX.print ?first ?sep ?last ?firstbind ~sepbind ?lastbind px py fmt t.xy
 end
+
+module Custom = struct
+  type ('a,'b) t = {
+    xy : ('a,'b) Mappe.Custom.t;
+    yx : ('b,'a) Mappe.Custom.t
+  }
+  let mapx t = t.xy
+  let mapy t = t.yx
+  let is_empty t = Mappe.Custom.is_empty t.xy
+  let empty cmpx cmpy = { xy = Mappe.Custom.empty cmpx; yx = Mappe.Custom.empty cmpy }
+  let add x y t = {
+    xy = Mappe.Custom.add x y t.xy;
+    yx = Mappe.Custom.add y x t.yx
+  }
+  let y_of_x x t = Mappe.Custom.find x t.xy
+  let x_of_y y t =  Mappe.Custom.find y t.yx
+  let remove x t = {
+    xy = Mappe.Custom.remove x t.xy;
+    yx = Mappe.Custom.remove (y_of_x x t) t.yx
+  }
+  let memx x t = Mappe.Custom.mem x t.xy
+  let memy y t = Mappe.Custom.mem y t.yx
+  let merge t1 t2 = {
+    xy = 
+    Mappe.Custom.merge 
+      (fun y1 y2 -> if y1=y2 then y1 else failwith "DMappe.Custom.merge: incompatible (x,y) bindings")
+      t1.xy t2.xy
+    ;
+    yx = 
+    Mappe.Custom.merge 
+      (fun x1 x2 -> if x1=x2 then x1 else failwith "DMappe.Custom.merge: incompatible (y,x) bindings")
+      t1.yx t2.yx
+    ;
+  }
+  let common t1 t2 = {
+    xy = 
+    Mappe.Custom.common 
+      (fun y1 y2 -> if y1=y2 then y1 else failwith "DMappe.Custom.common: incompatible (x,y) bindings")
+      t1.xy t2.xy
+    ;
+    yx = 
+    Mappe.Custom.common
+      (fun x1 x2 -> if x1=x2 then x1 else failwith "DMappe.Custom.common: incompatible (y,x) bindings")
+      t1.yx t2.yx
+    ;
+  }
+  let intersetx t setx = {
+    xy = Mappe.Custom.interset t.xy setx;
+    yx = Mappe.Custom.filter (fun y x -> Sette.Custom.mem x setx) t.yx
+  }
+  let intersety t sety = {
+    xy = Mappe.Custom.filter (fun x y -> Sette.Custom.mem y sety) t.xy;
+    yx = Mappe.Custom.interset t.yx sety;
+  }
+  let diffsetx t setx = {
+    xy = Mappe.Custom.diffset t.xy setx;
+    yx = Mappe.Custom.filter (fun y x -> not (Sette.Custom.mem x setx)) t.yx
+  }
+  let diffsety t sety = {
+    xy = Mappe.Custom.filter (fun x y -> not (Sette.Custom.mem y sety)) t.xy;
+    yx = Mappe.Custom.diffset t.yx sety;
+  }
+  let iter f t = Mappe.Custom.iter f t.xy
+  let fold f t v = Mappe.Custom.fold f t.xy v
+  let setx t = Mappe.Custom.maptoset t.xy
+  let sety t = Mappe.Custom.maptoset t.yx
+  let equalx t1 t2 = t1==t2 || Mappe.Custom.equal (=) t1.xy t2.xy
+  let equaly t1 t2 = t1==t2 || Mappe.Custom.equal (=) t1.yx t2.yx
+  let subsetx t1 t2 = t1==t2 || Mappe.Custom.subset (=) t1.xy t2.xy
+  let subsety t1 t2 = t1==t2 || Mappe.Custom.subset (=) t1.yx t2.yx
+  let cardinal t = Mappe.Custom.cardinal t.xy
+  let print ?first ?sep ?last ?firstbind ?(sepbind=(" <=> ":(unit, Format.formatter, unit) format)) ?lastbind px py fmt t =
+    Mappe.Custom.print 
+      ?first ?sep ?last 
+      ?firstbind ~sepbind ?lastbind
+      px py fmt t.xy
+  
+  
+  
+end
+  

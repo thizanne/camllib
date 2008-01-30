@@ -22,16 +22,15 @@
 
 (** Modification par B. Jeannet pour avoir des mappes génériques *)
 
-type ('a,'b) tzz =
-    Emptyzz
-  | Nodezz of ('a,'b) tzz * 'a * 'b * ('a,'b) tzz * int
+type ('a,'b) map =
+    Empty
+  | Node of ('a,'b) map * 'a * 'b * ('a,'b) map * int
 
-type ('a,'b) t
+type ('a,'b) t = ('a,'b) map
       (** The type of maps from type ['a] to type ['b]. *)
 
-val repr : ('a,'b) t -> ('a,'b) tzz
-val obj : ('a,'b) tzz -> ('a,'b) t
-
+val is_empty : ('a,'b) t -> bool
+          (** Is the map empty ? *)
 val empty: ('a,'b) t
 	  (** The empty map. *)
 val add: 'a -> 'b -> ('a,'b) t -> ('a,'b) t
@@ -96,15 +95,15 @@ val maptoset: ('a,'b) t -> 'a Sette.t
 val mapofset: ('a -> 'b) -> 'a Sette.t -> ('a,'b) t
 	(** [mapofset f s] returns the map associating [f key] to
 	   [key], for each element [key] of the set [s] *)
-val compare: ('b -> 'b -> int) -> ('a,'b) t -> ('a,'b) t -> int
-val comparei: ('a -> 'b -> 'b -> int) -> ('a,'b) t -> ('a,'b) t -> int
+val compare: ('b -> 'c -> int) -> ('a,'b) t -> ('a,'c) t -> int
+val comparei: ('a -> 'b -> 'c -> int) -> ('a,'b) t -> ('a,'c) t -> int
 	(** Comparison function between maps,
 	    total if the comparison function for data is total *)
-val equal: ('b -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t -> bool
-val equali: ('a -> 'b -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t -> bool
+val equal: ('b -> 'c -> bool) -> ('a,'b) t -> ('a,'c) t -> bool
+val equali: ('a -> 'b -> 'c -> bool) -> ('a,'b) t -> ('a,'c) t -> bool
 	(** equality between maps *)
-val subset: ('b -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t -> bool
-val subseti: ('a -> 'b -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t -> bool
+val subset: ('b -> 'c -> bool) -> ('a,'b) t -> ('a,'c) t -> bool
+val subseti: ('a -> 'b -> 'c -> bool) -> ('a,'b) t -> ('a,'c) t -> bool
 	(** subset between maps *)
 val filter: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t
 	(** [filter p m] returns the map of all bindings in [m] that satisfy
@@ -134,12 +133,12 @@ val print :
 module type S = sig
   type key
   type 'a t
-
   module Setkey : (Sette.S with type elt=key)
 
-  val repr : 'a t -> (key,'a) tzz
-  val obj : (key,'a) tzz -> 'a t
+  val repr : 'a t -> (key,'a) map
+  val obj : (key,'a) map -> 'a t
 
+  val is_empty : 'a t -> bool
   val empty : 'a t
   val add : key -> 'a -> 'a t -> 'a t
   val find : key -> 'a t -> 'a
@@ -148,9 +147,9 @@ module type S = sig
   val addmap : 'a t -> 'a t -> 'a t
   val merge : ('a -> 'a -> 'a) -> 'a t -> 'a t -> 'a t
   val mergei : (key -> 'a -> 'a -> 'a) -> 'a t -> 'a t -> 'a t
-  val combine : (key -> 'a option -> 'b option -> 'c option) -> 'a t -> 'b t -> 'c t
   val common : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
   val commoni : (key -> 'a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+  val combine : (key -> 'a option -> 'b option -> 'c option) -> 'a t -> 'b t -> 'c t
   val interset : 'a t -> Setkey.t -> 'a t
   val diffset : 'a t -> Setkey.t -> 'a t
   val iter : (key -> 'a -> unit) -> 'a t -> unit
@@ -159,12 +158,12 @@ module type S = sig
   val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
   val maptoset : 'a t -> Setkey.t
   val mapofset: (key -> 'a) -> Setkey.t -> 'a t
-  val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
-  val comparei : (key -> 'a -> 'a -> int) -> 'a t -> 'a t -> int
-  val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-  val equali : (key -> 'a -> 'a -> bool) -> 'a t -> 'a t -> bool
-  val subset : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-  val subseti : (key -> 'a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  val compare : ('a -> 'b -> int) -> 'a t -> 'b t -> int
+  val comparei : (key -> 'a -> 'b -> int) -> 'a t -> 'b t -> int
+  val equal : ('a -> 'b -> bool) -> 'a t -> 'b t -> bool
+  val equali : (key -> 'a -> 'b -> bool) -> 'a t -> 'b t -> bool
+  val subset : ('a -> 'b -> bool) -> 'a t -> 'b t -> bool
+  val subseti : (key -> 'a -> 'b -> bool) -> 'a t -> 'b t -> bool
   val filter: (key -> 'a -> bool) -> 'a t -> 'a t
   val partition: (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
   val cardinal : 'a t -> int
@@ -184,4 +183,104 @@ end
 (** Functor building an implementation of the map structure
    given a totally ordered type. *)
 module Make(Setkey : Sette.S) : (S with type key=Setkey.elt
-				   and module Setkey=Setkey)
+				    and module Setkey=Setkey)
+
+module Custom : sig
+  type ('a,'b) t = {
+    compare : ('a -> 'a -> int);
+    map : ('a,'b) map
+  }
+
+  val is_empty : ('a,'b) t -> bool
+  val empty: ('a -> 'a -> int) -> ('a,'b) t
+  val add: 'a -> 'b -> ('a,'b) t -> ('a,'b) t
+  val find: 'a -> ('a,'b) t -> 'b
+  val remove: 'a -> ('a,'b) t -> ('a,'b) t
+  val mem:  'a -> ('a,'b) t -> bool
+  val addmap : ('a,'b) t -> ('a,'b) t -> ('a,'b) t
+  val merge : ('b -> 'b -> 'b) -> ('a,'b) t -> ('a,'b) t -> ('a,'b) t
+  val mergei : ('a -> 'b -> 'b -> 'b) -> ('a,'b) t -> ('a,'b) t -> ('a,'b) t
+  val common : ('b -> 'c -> 'd) -> ('a,'b) t -> ('a,'c) t -> ('a,'d) t
+  val commoni : ('a -> 'b -> 'c -> 'd) -> ('a,'b) t -> ('a,'c) t -> ('a,'d) t
+  val combine : ('a -> 'b option -> 'c option -> 'd option) -> ('a,'b) t -> ('a,'c) t -> ('a,'d) t
+  val interset : ('a,'b) t -> 'a Sette.Custom.t -> ('a,'b) t
+  val diffset : ('a,'b) t -> 'a Sette.Custom.t -> ('a,'b) t
+  val iter: ('a -> 'b -> unit) -> ('a,'b) t -> unit
+  val map: ('b -> 'c) -> ('a,'b) t -> ('a,'c) t
+  val mapi: ('a -> 'b -> 'c) -> ('a,'b) t -> ('a,'c) t
+  val fold: ('a -> 'b -> 'c -> 'c) -> ('a,'b) t -> 'c -> 'c
+  val maptoset: ('a,'b) t -> 'a Sette.Custom.t
+  val mapofset: ('a -> 'b) -> 'a Sette.Custom.t -> ('a,'b) t
+  val compare: ('b -> 'c -> int) -> ('a,'b) t -> ('a,'c) t -> int
+  val comparei: ('a -> 'b -> 'c -> int) -> ('a,'b) t -> ('a,'c) t -> int
+  val equal: ('b -> 'c -> bool) -> ('a,'b) t -> ('a,'c) t -> bool
+  val equali: ('a -> 'b -> 'c -> bool) -> ('a,'b) t -> ('a,'c) t -> bool
+  val subset: ('b -> 'c -> bool) -> ('a,'b) t -> ('a,'c) t -> bool
+  val subseti: ('a -> 'b -> 'c -> bool) -> ('a,'b) t -> ('a,'c) t -> bool
+  val filter: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t
+  val partition: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t * ('a,'b) t
+  val cardinal: ('a,'b) t -> int
+  val choose : ('a,'b) t -> 'a * 'b
+  val print :
+      ?first:(unit, Format.formatter, unit) format ->
+      ?sep:(unit, Format.formatter, unit) format ->
+      ?last:(unit, Format.formatter, unit) format ->
+      ?firstbind:(unit, Format.formatter, unit) format ->
+      ?sepbind:(unit, Format.formatter, unit) format ->
+      ?lastbind:(unit, Format.formatter, unit) format ->
+      (Format.formatter -> 'a -> unit) ->
+      (Format.formatter -> 'b -> unit) ->
+      Format.formatter -> ('a,'b) t -> unit
+end
+
+
+
+module Compare : sig
+  val add : ('a -> 'a -> int) -> 'a -> 'b -> ('a, 'b) t -> ('a, 'b) t
+  val find : ('a -> 'a -> int) -> 'a -> ('a, 'b) t -> 'b
+  val remove : ('a -> 'a -> int) -> 'a -> ('a, 'b) t -> ('a, 'b) t
+  val mem : ('a -> 'a -> int) -> 'a -> ('a, 'b) t -> bool
+  val addmap : ('a -> 'a -> int) -> ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
+  val merge :
+    ('a -> 'a -> int) ->
+    ('b -> 'b -> 'b) -> ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
+  val mergei :
+    ('a -> 'a -> int) ->
+    ('a -> 'b -> 'b -> 'b) -> ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
+  val common : 
+    ('a -> 'a -> int) ->
+    ('b -> 'c -> 'd) -> ('a, 'b) t -> ('a, 'c) t -> ('a, 'd) t
+  val commoni : 
+    ('a -> 'a -> int) ->
+    ('a -> 'b -> 'c -> 'd) -> ('a, 'b) t -> ('a, 'c) t -> ('a, 'd) t
+  val combine :
+    ('a -> 'a -> int) ->
+    ('a -> 'b option -> 'c option -> 'd option) ->
+    ('a, 'b) t -> ('a, 'c) t -> ('a, 'd) t
+  val interset : ('a -> 'a -> int) -> ('a, 'b) t -> 'a Sette.t -> ('a, 'b) t
+  val diffset : ('a -> 'a -> int) -> ('a, 'b) t -> 'a Sette.t -> ('a, 'b) t
+  val compare :
+    ('a -> 'a -> int) ->
+    ('b -> 'c -> int) -> ('a, 'b) t -> ('a, 'c) t -> int
+  val comparei :
+    ('a -> 'a -> int) ->
+    ('a -> 'b -> 'c -> int) -> ('a, 'b) t -> ('a, 'c) t -> int
+  val equal :
+    ('a -> 'a -> int) ->
+    ('b -> 'c -> bool) -> ('a, 'b) t -> ('a, 'c) t -> bool
+  val equali :
+    ('a -> 'a -> int) ->
+    ('a -> 'b -> 'c -> bool) -> ('a, 'b) t -> ('a, 'c) t -> bool
+  val subset :
+    ('a -> 'a -> int) ->
+    ('b -> 'c -> bool) -> ('a, 'b) t -> ('a, 'c) t -> bool
+  val subseti :
+    ('a -> 'a -> int) ->
+    ('a -> 'b -> 'c -> bool) -> ('a, 'b) t -> ('a, 'c) t -> bool
+  val filter :
+    ('a -> 'a -> int) -> 
+    ('a -> 'b -> bool) -> ('a, 'b) t -> ('a, 'b) t
+  val partition :
+    ('a -> 'a -> int) ->
+    ('a -> 'b -> bool) -> ('a, 'b) t -> ('a, 'b) t * ('a, 'b) t
+end

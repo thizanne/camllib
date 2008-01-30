@@ -2,375 +2,103 @@
 
 (** Association tables over ordered types *)
 
-type ('a,'b) tzz =
-    Emptyzz
-  | Nodezz of ('a,'b) tzz * 'a * 'b * ('a,'b) tzz * int
+type ('a,'b) map =
+    Empty
+  | Node of ('a,'b) map * 'a * 'b * ('a,'b) map * int
 
-type ('a,'b) t = ('a,'b) tzz
+type ('a,'b) t = ('a,'b) map
 
-let repr : ('a,'b) t -> ('a,'b) tzz = Obj.magic
-let obj : ('a,'b) tzz -> ('a,'b) t = Obj.magic
-
-let empty = Emptyzz
+let is_empty t = t==Empty
+let empty = Empty
 
 let height = function
-    Emptyzz -> 0
-  | Nodezz(_,_,_,_,h) -> h
+    Empty -> 0
+  | Node(_,_,_,_,h) -> h
 
 let create l x d r =
   let hl = height l and hr = height r in
-  Nodezz(l, x, d, r, (if hl >= hr then hl + 1 else hr + 1))
+  Node(l, x, d, r, (if hl >= hr then hl + 1 else hr + 1))
 
 let bal l x d r =
-  let hl = match l with Emptyzz -> 0 | Nodezz(_,_,_,_,h) -> h in
-  let hr = match r with Emptyzz -> 0 | Nodezz(_,_,_,_,h) -> h in
+  let hl = match l with Empty -> 0 | Node(_,_,_,_,h) -> h in
+  let hr = match r with Empty -> 0 | Node(_,_,_,_,h) -> h in
   if hl > hr + 2 then begin
     match l with
-      Emptyzz -> invalid_arg "Map.bal"
-    | Nodezz(ll, lv, ld, lr, _) ->
+      Empty -> invalid_arg "Map.bal"
+    | Node(ll, lv, ld, lr, _) ->
 	if height ll >= height lr then
 	  create ll lv ld (create lr x d r)
 	else begin
 	  match lr with
-	    Emptyzz -> invalid_arg "Map.bal"
-	  | Nodezz(lrl, lrv, lrd, lrr, _)->
+	    Empty -> invalid_arg "Map.bal"
+	  | Node(lrl, lrv, lrd, lrr, _)->
 	      create (create ll lv ld lrl) lrv lrd (create lrr x d r)
 	end
   end else if hr > hl + 2 then begin
     match r with
-      Emptyzz -> invalid_arg "Map.bal"
-    | Nodezz(rl, rv, rd, rr, _) ->
+      Empty -> invalid_arg "Map.bal"
+    | Node(rl, rv, rd, rr, _) ->
 	if height rr >= height rl then
 	  create (create l x d rl) rv rd rr
 	else begin
 	  match rl with
-	    Emptyzz -> invalid_arg "Map.bal"
-	  | Nodezz(rll, rlv, rld, rlr, _) ->
+	    Empty -> invalid_arg "Map.bal"
+	  | Node(rll, rlv, rld, rlr, _) ->
 	      create (create l x d rll) rlv rld (create rlr rv rd rr)
 	    end
   end else
-    Nodezz(l, x, d, r, (if hl >= hr then hl + 1 else hr + 1))
-
-let rec add x data = function
-    Emptyzz ->
-      Nodezz(Emptyzz, x, data, Emptyzz, 1)
-  | Nodezz(l, v, d, r, h) ->
-      let c = Pervasives.compare x v in
-      if c = 0 then
-	    Nodezz(l, x, data, r, h)
-      else if c < 0 then
-	    bal (add x data l) v d r
-      else
-	bal l v d (add x data r)
-
-(** Same as create and bal, but no assumptions are made on the relative
-     heights of l and r. *)
-let rec join l x d r =
-  match (l, r) with
-    (Emptyzz, _) -> add x d r
-  | (_, Emptyzz) -> add x d l
-  | (Nodezz(ll, lx, ld, lr, lh), Nodezz(rl, rx, rd, rr, rh)) ->
-      if lh > rh + 2 then bal ll lx ld (join lr x d r) else
-      if rh > lh + 2 then bal (join l x d rl) rx rd rr else
-      create l x d r
-
-let rec find x = function
-    Emptyzz ->
-      raise Not_found
-  | Nodezz(l, v, d, r, _) ->
-      let c = Pervasives.compare x v in
-      if c = 0 then d
-      else find x (if c < 0 then l else r)
-
-let rec mem x = function
-    Emptyzz ->
-      false
-  | Nodezz(l, v, d, r, _) ->
-      let c = Pervasives.compare x v in
-      c = 0 || mem x (if c < 0 then l else r)
+    Node(l, x, d, r, (if hl >= hr then hl + 1 else hr + 1))
 
 let rec min_binding = function
-  Emptyzz -> raise Not_found
-  | Nodezz(Emptyzz, x, d, r, _) -> (x, d)
-  | Nodezz(l, x, d, r, _) -> min_binding l
+  Empty -> raise Not_found
+  | Node(Empty, x, d, r, _) -> (x, d)
+  | Node(l, x, d, r, _) -> min_binding l
 
 let rec remove_min_binding = function
-  Emptyzz -> invalid_arg "Map.remove_min_elt"
-  | Nodezz(Emptyzz, x, d, r, _) -> r
-  | Nodezz(l, x, d, r, _) -> bal (remove_min_binding l) x d r
+  Empty -> invalid_arg "Map.remove_min_elt"
+  | Node(Empty, x, d, r, _) -> r
+  | Node(l, x, d, r, _) -> bal (remove_min_binding l) x d r
 
 let merge t1 t2 =
   match (t1, t2) with
-  (Emptyzz, t) -> t
-  | (t, Emptyzz) -> t
+  (Empty, t) -> t
+  | (t, Empty) -> t
   | (_, _) ->
       let (x, d) = min_binding t2 in
       bal t1 x d (remove_min_binding t2)
 
-(** Merge two trees l and r into one.  All elements of l must precede the
-    elements of r.  No assumption on the heights of l and r. *)
-let concat t1 t2 =
-  match (t1, t2) with
-    (Emptyzz, t) -> t
-  | (t, Emptyzz) -> t
-  | (_, _) ->
-      let (x,d) = min_binding t2 in
-      join t1 x d (remove_min_binding t2)
-
-(** Splitting.  split x s returns a quadruple (l, present, r) where
-   - l is the set of bindings of s with keys that are < x
-   - r is the set of bindings of s with keys that are > x
-   - present is None if s contains no key equal to x,
-     or Some(data) if  s contains a key equal to x bound to data
-*)
-let rec split key = function
-    Emptyzz ->
-      (Emptyzz, None, Emptyzz)
-  | Nodezz(l, x, d, r, _) ->
-      let c = Pervasives.compare key x in
-      if c = 0 then (l, (Some d), r)
-      else if c < 0 then
-	let (ll, pres, rl) = split key l in (ll, pres, join rl x d r)
-      else
-	let (lr, pres, rr) = split key r in (join l x d lr, pres, rr)
-
-let rec remove x = function
-    Emptyzz ->
-      Emptyzz
-  | Nodezz(l, v, d, r, h) ->
-      let c = Pervasives.compare x v in
-      if c = 0 then
-	merge l r
-      else if c < 0 then
-	bal (remove x l) v d r
-      else
-	bal l v d (remove x r)
-
-let rec addmap m1 m2 =
-  match (m1, m2) with
-    (Emptyzz, t2) -> t2
-  | (t1, Emptyzz) -> t1
-  | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
-      if h1 >= h2 then
-	if h2 = 1 then add x2 d2 m1 else begin
-	  let (l2, pres, r2) = split x1 m2 in
-	  join
-	    (addmap l1 l2)
-	    x1
-	    (match pres with None -> d1 | Some d2 -> d2)
-	    (addmap r1 r2)
-	end
-      else
-	if h1 = 1 then add x1 d1 m2 else begin
-	  let (l1, _, r1) = split x2 m1 in
-	  join (addmap l1 l2) x2 d2 (addmap r1 r2)
-	end
-
-let common f m1 m2 =
-  let rec common m1 m2 =
-    match (m1, m2) with
-    | (Emptyzz, t2) -> Emptyzz
-    | (t1, Emptyzz) -> Emptyzz
-    | (Nodezz(l1, x1, d1, r1, _), t2) ->
-	match split x1 t2 with
-	| (l2, None, r2) ->
-	    concat (common l1 l2) (common r1 r2)
-	| (l2, (Some d2), r2) ->
-	    join (common l1 l2) x1 (f d1 d2) (common r1 r2)
-  in
-  common m1 m2
-
-let commoni f m1 m2 =
-  let rec common m1 m2 =
-    match (m1, m2) with
-    | (Emptyzz, t2) -> Emptyzz
-    | (t1, Emptyzz) -> Emptyzz
-    | (Nodezz(l1, x1, d1, r1, _), t2) ->
-	match split x1 t2 with
-	| (l2, None, r2) ->
-	    concat (common l1 l2) (common r1 r2)
-	| (l2, (Some d2), r2) ->
-	    join (common l1 l2) x1 (f x1 d1 d2) (common r1 r2)
-  in
-  common m1 m2
-
-let interset m1 s2 =
-  let rec interset m1 s2 =
-    match (m1, s2) with
-    | (Emptyzz, t2) -> Emptyzz
-    | (t1, Sette.Emptyzz) -> Emptyzz
-    | (Nodezz(l1, x1, d1, r1, _), t2) ->
-	match Sette.splitzz x1 t2 with
-	| (l2, false, r2) ->
-	    concat (interset l1 l2) (interset r1 r2)
-	| (l2, true, r2) ->
-	    join (interset l1 l2) x1 d1 (interset r1 r2)
-  in
-  interset m1 (Sette.repr s2)
-
-let diffset m1 s2 =
-  let rec diffset m1 s2 =
-    match (m1, s2) with
-    (Emptyzz, t2) -> Emptyzz
-    | (t1, Sette.Emptyzz) -> t1
-    | (Nodezz(l1, x1, d1, r1, _), t2) ->
-	match Sette.splitzz x1 t2 with
-	(l2, false, r2) ->
-	  join (diffset l1 l2) x1 d1 (diffset r1 r2)
-      | (l2, true, r2) ->
-	  concat (diffset l1 l2) (diffset r1 r2)
-  in
-  diffset m1 (Sette.repr s2)
-
 let rec iter f = function
-    Emptyzz -> ()
-  | Nodezz(l, v, d, r, _) ->
+    Empty -> ()
+  | Node(l, v, d, r, _) ->
       iter f l; f v d; iter f r
 
 let rec map f = function
-    Emptyzz               -> Emptyzz
-  | Nodezz(l, v, d, r, h) -> Nodezz(map f l, v, f d, map f r, h)
-
-let maptoset map =
-  let rec walk = function
-    | Emptyzz               -> Sette.Emptyzz
-    | Nodezz(l, v, d, r, h) -> Sette.Nodezz(walk l, v, walk r, h)
-  in
-  Sette.obj (walk (repr map))
-
-let mapofset f set =
-  let rec walk = function
-    | Sette.Emptyzz -> Emptyzz
-    | Sette.Nodezz(l,v,r,h) -> Nodezz(walk l,v,f v,walk r,h)
-  in
-  obj (walk (Sette.repr set))
-
-let rec mapi f = function
-    Emptyzz               -> Emptyzz
-  | Nodezz(l, v, d, r, h) -> Nodezz(mapi f l, v, f v d, mapi f r, h)
+    Empty               -> Empty
+  | Node(l, v, d, r, h) -> Node(map f l, v, f d, map f r, h)
 
 let rec fold f m accu =
   match m with
-    Emptyzz -> accu
-  | Nodezz(l, v, d, r, _) ->
+    Empty -> accu
+  | Node(l, v, d, r, _) ->
       fold f l (f v d (fold f r accu))
 
-let filter p m =
-  let rec filt accu = function
-    | Emptyzz -> accu
-    | Nodezz(l, v, d, r, _) ->
-	filt (filt (if p v d then add v d accu else accu) l) r in
-  filt Emptyzz m
+let rec maptoset = function
+  | Empty               -> Sette.Empty
+  | Node(l, v, d, r, h) -> Sette.Node(maptoset l, v, maptoset r, h)
 
-let partition p m =
-  let rec part (t, f as accu) = function
-    | Emptyzz -> accu
-    | Nodezz(l, v, d, r, _) ->
-	part (part (if p v d then (add v d t, f) else (t, add v d f)) l) r in
-  part (Emptyzz, Emptyzz) m
+let rec mapofset f = function
+  | Sette.Empty -> Empty
+  | Sette.Node(l,v,r,h) -> Node(mapofset f l,v,f v,mapofset f r,h)
+
+let rec mapi f = function
+    Empty               -> Empty
+  | Node(l, v, d, r, h) -> Node(mapi f l, v, f v d, mapi f r, h)
 
 let rec cardinal = function
-    Emptyzz -> 0
-  | Nodezz(l, v, d, r, _) -> cardinal l + 1 + cardinal r
+    Empty -> 0
+  | Node(l, v, d, r, _) -> cardinal l + 1 + cardinal r
 let choose = min_binding
 
-type ('a,'b) enumeration = End | More of 'a * 'b * ('a,'b) t * ('a,'b) enumeration
-
-let rec cons_enum m e =
-  match m with
-  | Emptyzz -> e
-  | Nodezz(l, v, d, r, _) -> cons_enum l (More(v, d, r, e))
-
-let compare cmp m1 m2 =
-  let rec compare_aux e1 e2 =
-    match (e1, e2) with
-    | (End, End) -> 0
-    | (End, _)  -> -1
-    | (_, End) -> 1
-    | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
-	let c = Pervasives.compare v1 v2 in
-	if c <> 0 then c else
-	  let c = cmp d1 d2 in
-	  if c <> 0 then c else
-	    compare_aux (cons_enum r1 e1) (cons_enum r2 e2)
-  in
-  compare_aux (cons_enum m1 End) (cons_enum m2 End)
-
-let comparei cmp m1 m2 =
-  let rec compare_aux e1 e2 =
-    match (e1, e2) with
-    | (End, End) -> 0
-    | (End, _)  -> -1
-    | (_, End) -> 1
-    | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
-	let c = Pervasives.compare v1 v2 in
-	if c <> 0 then c else
-	  let c = cmp v1 d1 d2 in
-	  if c <> 0 then c else
-	    compare_aux (cons_enum r1 e1) (cons_enum r2 e2)
-  in
-  compare_aux (cons_enum m1 End) (cons_enum m2 End)
-
-let equal cmp m1 m2 =
-  let rec equal_aux e1 e2 =
-    match (e1, e2) with
-    (End, End) -> true
-    | (End, _)  -> false
-    | (_, End) -> false
-    | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
-	Pervasives.compare v1 v2 = 0 && cmp d1 d2 &&
-    equal_aux (cons_enum r1 e1) (cons_enum r2 e2)
-  in
-  equal_aux (cons_enum m1 End) (cons_enum m2 End)
-
-let equali cmp m1 m2 =
-  let rec equal_aux e1 e2 =
-    match (e1, e2) with
-    (End, End) -> true
-    | (End, _)  -> false
-    | (_, End) -> false
-    | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
-	Pervasives.compare v1 v2 = 0 && cmp v1 d1 d2 &&
-    equal_aux (cons_enum r1 e1) (cons_enum r2 e2)
-  in
-  equal_aux (cons_enum m1 End) (cons_enum m2 End)
-
-let subset cmp m1 m2 =
-  let rec subset_aux m1 m2 =
-      match (m1, m2) with
-        Emptyzz, _ ->
-          true
-      | _, Emptyzz ->
-          false
-      | Nodezz (l1, v1, d1, r1, _), (Nodezz (l2, v2, d2, r2, _) as t2) ->
-          let c = Pervasives.compare v1 v2 in
-          if c = 0 then
-            cmp d1 d2 && subset_aux l1 l2 && subset_aux r1 r2
-          else if c < 0 then
-            subset_aux (Nodezz (l1, v1, d1, Emptyzz, 0)) l2 && subset_aux r1 t2
-          else
-            subset_aux (Nodezz (Emptyzz, v1, d1, r1, 0)) r2 && subset_aux l1 t2
-  in
-  subset_aux m1 m2
-
-let subseti cmp m1 m2 =
-  let rec subset_aux m1 m2 =
-      match (m1, m2) with
-        Emptyzz, _ ->
-          true
-      | _, Emptyzz ->
-          false
-      | Nodezz (l1, v1, d1, r1, _), (Nodezz (l2, v2, d2, r2, _) as t2) ->
-          let c = Pervasives.compare v1 v2 in
-          if c = 0 then
-            cmp v1 d1 d2 && subset_aux l1 l2 && subset_aux r1 r2
-          else if c < 0 then
-            subset_aux (Nodezz (l1, v1, d1, Emptyzz, 0)) l2 && subset_aux r1 t2
-          else
-            subset_aux (Nodezz (Emptyzz, v1, d1, r1, 0)) r2 && subset_aux l1 t2
-  in
-  subset_aux m1 m2
-    
 let print
   ?(first : (unit, Format.formatter, unit) format = ("[@[<hv>" : (unit, Format.formatter, unit) format))
   ?(sep : (unit, Format.formatter, unit) format = (";@ ":(unit, Format.formatter, unit) format))
@@ -398,15 +126,405 @@ let print
     map;
   Format.fprintf formatter last
 
+module Compare = struct
+
+  let rec add (compare:'a -> 'a -> int) x data = function
+    | Empty ->
+	Node(Empty, x, data, Empty, 1)
+    | Node(l, v, d, r, h) ->
+	let c = compare x v in
+	if c = 0 then
+	  Node(l, x, data, r, h)
+	else if c < 0 then
+	  bal (add compare x data l) v d r
+	else
+	  bal l v d (add compare x data r)
+
+  (** Same as create and bal, but no assumptions are made on the relative
+     heights of l and r. *)
+  let rec join (compare:'a -> 'a -> int) l x d r =
+    match (l, r) with
+    | (Empty, _) -> add compare x d r
+    | (_, Empty) -> add compare x d l
+    | (Node(ll, lx, ld, lr, lh), Node(rl, rx, rd, rr, rh)) ->
+	if lh > rh + 2 then bal ll lx ld (join compare lr x d r) else
+	  if rh > lh + 2 then bal (join compare l x d rl) rx rd rr else
+	    create l x d r
+
+  let rec find (compare:'a -> 'a -> int) x = function
+   | Empty ->
+      raise Not_found
+  | Node(l, v, d, r, _) ->
+      let c = compare x v in
+      if c = 0 then d
+      else find compare x (if c < 0 then l else r)
+
+  let rec mem (compare:'a -> 'a -> int) x = function
+    | Empty ->
+	false
+    | Node(l, v, d, r, _) ->
+	let c = compare x v in
+	c = 0 || mem compare x (if c < 0 then l else r)
+
+  (** Merge two trees l and r into one.  All elements of l must precede the
+    elements of r.  No assumption on the heights of l and r. *)
+  let concat (compare:'a -> 'a -> int) t1 t2 =
+    match (t1, t2) with
+    | (Empty, t) -> t
+    | (t, Empty) -> t
+    | (_, _) ->
+	let (x,d) = min_binding t2 in
+	join compare t1 x d (remove_min_binding t2)
+
+  (** Splitting.  split x s returns a quadruple (l, present, r) where
+    - l is the set of bindings of s with keys that are < x
+    - r is the set of bindings of s with keys that are > x
+    - present is None if s contains no key equal to x,
+      or Some(data) if  s contains a key equal to x bound to data
+  *)
+  let rec split (compare:'a -> 'a -> int) key = function
+    | Empty ->
+	(Empty, None, Empty)
+    | Node(l, x, d, r, _) ->
+	let c = compare key x in
+	if c = 0 then (l, (Some d), r)
+	else if c < 0 then
+	  let (ll, pres, rl) = split compare key l in (ll, pres, join compare rl x d r)
+	else
+	  let (lr, pres, rr) = split compare key r in (join compare l x d lr, pres, rr)
+
+  let rec remove (compare:'a -> 'a -> int) x = function
+    | Empty ->
+	Empty
+    | Node(l, v, d, r, h) ->
+	let c = compare x v in
+	if c = 0 then
+	  merge l r
+	else if c < 0 then
+	  bal (remove compare x l) v d r
+	else
+	  bal l v d (remove compare x r)
+
+  let rec addmap (compare:'a -> 'a -> int) m1 m2 =
+    match (m1, m2) with
+    | (Empty, t2) -> t2
+    | (t1, Empty) -> t1
+    | (Node(l1, x1, d1, r1, h1), Node(l2, x2, d2, r2, h2)) ->
+	if h1 >= h2 then
+	  if h2 = 1 then add compare x2 d2 m1 else begin
+	    let (l2, pres, r2) = split compare x1 m2 in
+	    join compare
+	      (addmap compare l1 l2)
+	      x1
+	      (match pres with None -> d1 | Some d2 -> d2)
+	      (addmap compare r1 r2)
+	  end
+	else
+	  if h1 = 1 then add compare x1 d1 m2 else begin
+	    let (l1, _, r1) = split compare x2 m1 in
+	    join compare (addmap compare l1 l2) x2 d2 (addmap compare r1 r2)
+	  end
+
+  let common (compare:'a -> 'a -> int) f m1 m2 =
+    let rec common m1 m2 =
+      match (m1, m2) with
+      | (Empty, t2) -> Empty
+      | (t1, Empty) -> Empty
+      | (Node(l1, x1, d1, r1, _), t2) ->
+	  match split compare x1 t2 with
+	  | (l2, None, r2) ->
+	      concat compare (common l1 l2) (common r1 r2)
+	  | (l2, (Some d2), r2) ->
+	      join compare (common l1 l2) x1 (f d1 d2) (common r1 r2)
+    in
+    common m1 m2
+
+  let commoni (compare:'a -> 'a -> int) f m1 m2 =
+    let rec common m1 m2 =
+      match (m1, m2) with
+      | (Empty, t2) -> Empty
+      | (t1, Empty) -> Empty
+      | (Node(l1, x1, d1, r1, _), t2) ->
+	  match split compare x1 t2 with
+	  | (l2, None, r2) ->
+	      concat compare (common l1 l2) (common r1 r2)
+	  | (l2, (Some d2), r2) ->
+	      join compare (common l1 l2) x1 (f x1 d1 d2) (common r1 r2)
+    in
+    common m1 m2
+
+  let interset (compare:'a -> 'a -> int) m1 s2 =
+    let rec interset m1 s2 =
+      match (m1, s2) with
+      | (Empty, t2) -> Empty
+      | (t1, Sette.Empty) -> Empty
+      | (Node(l1, x1, d1, r1, _), t2) ->
+	  match Sette.Compare.split compare x1 t2 with
+	  | (l2, false, r2) ->
+	      concat compare (interset l1 l2) (interset r1 r2)
+	  | (l2, true, r2) ->
+	      join compare (interset l1 l2) x1 d1 (interset r1 r2)
+    in
+    interset m1 s2
+
+  let diffset (compare:'a -> 'a -> int) m1 s2 =
+    let rec diffset m1 s2 =
+      match (m1, s2) with
+      (Empty, t2) -> Empty
+      | (t1, Sette.Empty) -> t1
+      | (Node(l1, x1, d1, r1, _), t2) ->
+	  match Sette.Compare.split compare x1 t2 with
+	  (l2, false, r2) ->
+	    join compare (diffset l1 l2) x1 d1 (diffset r1 r2)
+	  | (l2, true, r2) ->
+	      concat compare (diffset l1 l2) (diffset r1 r2)
+    in
+    diffset m1 s2
+
+  let filter (compare:'a -> 'a -> int) p m =
+    let rec filt accu = function
+      | Empty -> accu
+      | Node(l, v, d, r, _) ->
+	  filt (filt (if p v d then add compare v d accu else accu) l) r in
+    filt Empty m
+
+  let partition (compare:'a -> 'a -> int) p m =
+    let rec part (t, f as accu) = function
+      | Empty -> accu
+      | Node(l, v, d, r, _) ->
+	  part (part (if p v d then (add compare v d t, f) else (t, add compare v d f)) l) r in
+    part (Empty, Empty) m
+
+  type ('a,'b) enumeration = End | More of 'a * 'b * ('a,'b) t * ('a,'b) enumeration
+
+  let rec cons_enum m e =
+    match m with
+    | Empty -> e
+    | Node(l, v, d, r, _) -> cons_enum l (More(v, d, r, e))
+
+  let compare (compare:'a -> 'a -> int) cmp m1 m2 =
+    let rec compare_aux e1 e2 =
+      match (e1, e2) with
+      | (End, End) -> 0
+      | (End, _)  -> -1
+      | (_, End) -> 1
+      | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
+	  let c = compare v1 v2 in
+	  if c <> 0 then c else
+	    let c = cmp d1 d2 in
+	    if c <> 0 then c else
+	      compare_aux (cons_enum r1 e1) (cons_enum r2 e2)
+    in
+    compare_aux (cons_enum m1 End) (cons_enum m2 End)
+
+  let comparei (compare:'a -> 'a -> int) cmp m1 m2 =
+    let rec compare_aux e1 e2 =
+      match (e1, e2) with
+      | (End, End) -> 0
+      | (End, _)  -> -1
+      | (_, End) -> 1
+      | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
+	  let c = compare v1 v2 in
+	  if c <> 0 then c else
+	    let c = cmp v1 d1 d2 in
+	    if c <> 0 then c else
+	      compare_aux (cons_enum r1 e1) (cons_enum r2 e2)
+    in
+    compare_aux (cons_enum m1 End) (cons_enum m2 End)
+
+  let equal (compare:'a -> 'a -> int) cmp m1 m2 =
+    let rec equal_aux e1 e2 =
+      match (e1, e2) with
+      (End, End) -> true
+      | (End, _)  -> false
+      | (_, End) -> false
+      | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
+	  compare v1 v2 = 0 && cmp d1 d2 &&
+      equal_aux (cons_enum r1 e1) (cons_enum r2 e2)
+    in
+    equal_aux (cons_enum m1 End) (cons_enum m2 End)
+
+  let equali (compare:'a -> 'a -> int) cmp m1 m2 =
+    let rec equal_aux e1 e2 =
+      match (e1, e2) with
+      (End, End) -> true
+      | (End, _)  -> false
+      | (_, End) -> false
+      | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
+	  compare v1 v2 = 0 && cmp v1 d1 d2 &&
+      equal_aux (cons_enum r1 e1) (cons_enum r2 e2)
+    in
+    equal_aux (cons_enum m1 End) (cons_enum m2 End)
+
+  let subset (compare:'a -> 'a -> int) cmp m1 m2 =
+    let rec subset_aux m1 m2 =
+      match (m1, m2) with
+      | Empty, _ ->
+	  true
+      | _, Empty ->
+	  false
+      | Node (l1, v1, d1, r1, _), (Node (l2, v2, d2, r2, _) as t2) ->
+	  let c = compare v1 v2 in
+	  if c = 0 then
+	    cmp d1 d2 && subset_aux l1 l2 && subset_aux r1 r2
+	  else if c < 0 then
+	    subset_aux (Node (l1, v1, d1, Empty, 0)) l2 && subset_aux r1 t2
+	  else
+	    subset_aux (Node (Empty, v1, d1, r1, 0)) r2 && subset_aux l1 t2
+    in
+    subset_aux m1 m2
+
+  let subseti (compare:'a -> 'a -> int) cmp m1 m2 =
+    let rec subset_aux m1 m2 =
+      match (m1, m2) with
+      | Empty, _ ->
+	  true
+      | _, Empty ->
+	  false
+      | Node (l1, v1, d1, r1, _), (Node (l2, v2, d2, r2, _) as t2) ->
+	  let c = compare v1 v2 in
+	  if c = 0 then
+	    cmp v1 d1 d2 && subset_aux l1 l2 && subset_aux r1 r2
+	  else if c < 0 then
+	    subset_aux (Node (l1, v1, d1, Empty, 0)) l2 && subset_aux r1 t2
+	  else
+	    subset_aux (Node (Empty, v1, d1, r1, 0)) r2 && subset_aux l1 t2
+    in
+    subset_aux m1 m2
+
+  let rec merge (compare:'a -> 'a -> int) dmerge m1 m2 =
+    match (m1, m2) with
+    | (Empty, t2) -> t2
+    | (t1, Empty) -> t1
+    | (Node(l1, x1, d1, r1, h1), Node(l2, x2, d2, r2, h2)) ->
+	if h1 >= h2 then begin
+	  let (l2, pres, r2) = split compare x1 m2 in
+	  join
+	    compare
+	    (merge compare dmerge l1 l2)
+	    x1
+	    (match pres with None -> d1 | Some d2 -> dmerge d1 d2)
+	    (merge compare dmerge r1 r2)
+	end
+	else begin
+	  let (l1, pres, r1) = split compare x2 m1 in
+	  join
+	    compare
+	    (merge compare dmerge l1 l2)
+	    x2
+	    (match pres with None -> d2 | Some d1 -> dmerge d1 d2)
+	    (merge compare dmerge r1 r2)
+	end
+
+  let rec mergei (compare:'a -> 'a -> int) dmerge m1 m2 =
+    match (m1, m2) with
+    | (Empty, t2) -> t2
+    | (t1, Empty) -> t1
+    | (Node(l1, x1, d1, r1, h1), Node(l2, x2, d2, r2, h2)) ->
+	if h1 >= h2 then begin
+	  let (l2, pres, r2) = split compare x1 m2 in
+	  join
+	    compare
+	    (mergei compare dmerge l1 l2)
+	    x1
+	    (match pres with None -> d1 | Some d2 -> dmerge x1 d1 d2)
+	    (mergei compare dmerge r1 r2)
+	end
+	else begin
+	  let (l1, pres, r1) = split compare x2 m1 in
+	  join
+	    compare
+	    (mergei compare dmerge l1 l2)
+	    x2
+	    (match pres with None -> d2 | Some d1 -> dmerge x1 d1 d2)
+	    (mergei compare dmerge r1 r2)
+	end
+
+  let rec combine
+    (compare : 'a -> 'a -> int)
+    (dcombine: 'a -> 'b option -> 'c option -> 'd option)
+    (m1:('a,'b) t)
+    (m2:('a,'c) t)
+    :
+    ('a,'d) t
+    =
+    match (m1, m2) with
+    | (Empty, t2) ->
+	fold
+	(fun k d res ->
+	  match dcombine k None (Some d) with
+	  | None -> res
+	  | Some d -> add compare k d res
+	)
+	t2 empty
+    | (t1, Empty) ->
+	fold
+	(fun k d res ->
+	  match dcombine k (Some d) None with
+	  | None -> res
+	  | Some d -> add compare k d res
+	)
+	t1 empty
+    | (Node(l1, x1, d1, r1, h1), Node(l2, x2, d2, r2, h2)) ->
+	if h1 >= h2 then begin
+	  let (l2, pres, r2) = split compare x1 m2 in
+	  let data = dcombine x1 (Some d1) pres in
+	  match data with
+	  | None ->
+	      concat compare (combine compare dcombine l1 l2) (combine compare dcombine r1 r2)
+	  | Some d ->
+	      join
+	      compare
+	      (combine compare dcombine l1 l2)
+	      x1 d
+	      (combine compare dcombine r1 r2)
+	end
+	else begin
+	  let (l1, pres, r1) = split compare x2 m1 in
+	  let data = dcombine x2 pres (Some d2)in
+	  match data with
+	  | None ->
+	      concat compare (combine compare dcombine l1 l2) (combine compare dcombine r1 r2)
+	  | Some d ->
+	      join
+	      compare
+	      (combine compare dcombine l1 l2)
+	      x2 d
+	      (combine compare dcombine r1 r2)
+	end
+end
+
+let add x data map = Compare.add Pervasives.compare x data map
+let find x map = Compare.find Pervasives.compare x map
+let mem x map = Compare.mem Pervasives.compare x map
+let remove x map = Compare.remove Pervasives.compare x map
+let interset m1 s2 = Compare.interset Pervasives.compare m1 s2
+let diffset m1 s2 = Compare.diffset Pervasives.compare m1 s2
+let filter f m = Compare.filter Pervasives.compare f m
+let partition f m = Compare.partition Pervasives.compare f m
+let compare cmp m1 m2 = Compare.compare Pervasives.compare cmp m1 m2
+let comparei cmp m1 m2 = Compare.comparei Pervasives.compare cmp m1 m2
+let equal cmp m1 m2 = Compare.equal Pervasives.compare cmp m1 m2
+let equali cmp m1 m2 = Compare.equali Pervasives.compare cmp m1 m2
+let subset cmp m1 m2 = Compare.subset Pervasives.compare cmp m1 m2
+let subseti cmp m1 m2 = Compare.subseti Pervasives.compare cmp m1 m2
+let common f m1 m2 = Compare.common Pervasives.compare f m1 m2
+let commoni f m1 m2 = Compare.commoni Pervasives.compare f m1 m2
+let addmap m1 m2 = Compare.addmap Pervasives.compare m1 m2
+let merge dmerge m1 m2 = Compare.merge Pervasives.compare dmerge m1 m2
+let mergei dmerge m1 m2 = Compare.mergei Pervasives.compare dmerge m1 m2
+let combine dcombine m1 m2 = Compare.combine Pervasives.compare dcombine m1 m2
+
 (** Output signature of the functor {!Mappe.Make}. *)
 module type S = sig
-  module Setkey : Sette.S
-  type key = Setkey.Ord.t
+  type key
   type 'a t
+  module Setkey : (Sette.S with type elt=key)
 
-  val repr : 'a t -> (key,'a) tzz
-  val obj : (key,'a) tzz -> 'a t
+  val repr : 'a t -> (key,'a) map
+  val obj : (key,'a) map -> 'a t
 
+  val is_empty : 'a t -> bool
   val empty : 'a t
   val add : key -> 'a -> 'a t -> 'a t
   val find : key -> 'a t -> 'a
@@ -415,9 +533,9 @@ module type S = sig
   val addmap : 'a t -> 'a t -> 'a t
   val merge : ('a -> 'a -> 'a) -> 'a t -> 'a t -> 'a t
   val mergei : (key -> 'a -> 'a -> 'a) -> 'a t -> 'a t -> 'a t
-  val combine : (key -> 'a option -> 'b option -> 'c option) -> 'a t -> 'b t -> 'c t
   val common : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
   val commoni : (key -> 'a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+  val combine : (key -> 'a option -> 'b option -> 'c option) -> 'a t -> 'b t -> 'c t
   val interset : 'a t -> Setkey.t -> 'a t
   val diffset : 'a t -> Setkey.t -> 'a t
   val iter : (key -> 'a -> unit) -> 'a t -> unit
@@ -426,12 +544,12 @@ module type S = sig
   val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
   val maptoset : 'a t -> Setkey.t
   val mapofset: (key -> 'a) -> Setkey.t -> 'a t
-  val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
-  val comparei : (key -> 'a -> 'a -> int) -> 'a t -> 'a t -> int
-  val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-  val equali : (key -> 'a -> 'a -> bool) -> 'a t -> 'a t -> bool
-  val subset : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-  val subseti : (key -> 'a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  val compare : ('a -> 'b -> int) -> 'a t -> 'b t -> int
+  val comparei : (key -> 'a -> 'b -> int) -> 'a t -> 'b t -> int
+  val equal : ('a -> 'b -> bool) -> 'a t -> 'b t -> bool
+  val equali : (key -> 'a -> 'b -> bool) -> 'a t -> 'b t -> bool
+  val subset : ('a -> 'b -> bool) -> 'a t -> 'b t -> bool
+  val subseti : (key -> 'a -> 'b -> bool) -> 'a t -> 'b t -> bool
   val filter: (key -> 'a -> bool) -> 'a t -> 'a t
   val partition: (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
   val cardinal : 'a t -> int
@@ -454,472 +572,103 @@ module Make(Setkey : Sette.S) = struct
   type key = Setkey.elt
   module Setkey=Setkey
 
-  type 'a t = (key,'a) tzz
+  type 'a t = (key,'a) map
 
-  let repr : 'a t -> (key,'a) tzz = Obj.magic
-  let obj : (key,'a) tzz -> 'a t = Obj.magic
+  let repr : 'a t -> (key,'a) map = Obj.magic
+  let obj : (key,'a) map -> 'a t = Obj.magic
 
-
+  let is_empty (t:'a t) = t==Empty
   let empty : 'a t = empty
-
-  let rec add x data = function
-    | Emptyzz ->
-	Nodezz(Emptyzz, x, data, Emptyzz, 1)
-    | Nodezz(l, v, d, r, h) ->
-	let c = Setkey.Ord.compare x v in
-	if c = 0 then
-	  Nodezz(l, x, data, r, h)
-	else if c < 0 then
-	  bal (add x data l) v d r
-	else
-	  bal l v d (add x data r)
-
-  (** Same as create and bal, but no assumptions are made on the relative
-    heights of l and r. *)
-  let rec join l x d r =
-    match (l, r) with
-    (Emptyzz, _) -> add x d r
-    | (_, Emptyzz) -> add x d l
-    | (Nodezz(ll, lx, ld, lr, lh), Nodezz(rl, rx, rd, rr, rh)) ->
-	if lh > rh + 2 then bal ll lx ld (join lr x d r) else
-	if rh > lh + 2 then bal (join l x d rl) rx rd rr else
-	create l x d r
-
-  (** Merge two trees l and r into one.  All elements of l must precede the
-    elements of r.  No assumption on the heights of l and r. *)
-  let concat t1 t2 =
-    match (t1, t2) with
-    (Emptyzz, t) -> t
-    | (t, Emptyzz) -> t
-    | (_, _) ->
-	let (x,d) = min_binding t2 in
-	join t1 x d (remove_min_binding t2)
-
-  (** Splitting.  split x s returns a quadruple (l, present, r) where
-      - l is the set of bindings of s with keys that are < x
-      - r is the set of bindings of s with keys that are > x
-      - present is None if s contains no key equal to x,
-	or Some(data) if  s contains a key equal to x bound to data
-  *)
-  let rec split key = function
-    Emptyzz ->
-      (Emptyzz, None, Emptyzz)
-    | Nodezz(l, x, d, r, _) ->
-	let c = Setkey.Ord.compare key x in
-	if c = 0 then (l, (Some d), r)
-	else if c < 0 then
-	  let (ll, pres, rl) = split key l in (ll, pres, join rl x d r)
-	else
-	  let (lr, pres, rr) = split key r in (join l x d lr, pres, rr)
-
-  let rec find x = function
-    | Emptyzz ->
-	raise Not_found
-    | Nodezz(l, v, d, r, _) ->
-	let c = Setkey.Ord.compare x v in
-	if c = 0 then d
-	else find x (if c < 0 then l else r)
-
-  let rec mem x = function
-    | Emptyzz ->
-	false
-    | Nodezz(l, v, d, r, _) ->
-	let c = Setkey.Ord.compare x v in
-	c = 0 || mem x (if c < 0 then l else r)
-
-  let rec remove x = function
-    | Emptyzz ->
-	Emptyzz
-    | Nodezz(l, v, d, r, h) ->
-	let c = Setkey.Ord.compare x v in
-	if c = 0 then
-	  merge l r
-	else if c < 0 then
-	  bal (remove x l) v d r
-	else
-	  bal l v d (remove x r)
-
-  let rec addmap m1 m2 =
-    match (m1, m2) with
-    | (Emptyzz, t2) -> t2
-    | (t1, Emptyzz) -> t1
-    | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
-	if h1 >= h2 then
-	  if h2 = 1 then add x2 d2 m1 else begin
-	    let (l2, pres, r2) = split x1 m2 in
-	    join
-	      (addmap l1 l2)
-	      x1
-	      (match pres with None -> d1 | Some d2 -> d2)
-	      (addmap r1 r2)
-	  end
-	else
-	  if h1 = 1 then add x1 d1 m2 else begin
-	    let (l1, _, r1) = split x2 m1 in
-	    join (addmap l1 l2) x2 d2 (addmap r1 r2)
-	  end
-
-  let common f m1 m2 =
-    let rec common m1 m2 =
-    match (m1, m2) with
-    | (Emptyzz, t2) -> Emptyzz
-    | (t1, Emptyzz) -> Emptyzz
-    | (Nodezz(l1, x1, d1, r1, _), t2) ->
-	match split x1 t2 with
-	| (l2, None, r2) ->
-	    concat (common l1 l2) (common r1 r2)
-	| (l2, (Some d2), r2) ->
-	    join (common l1 l2) x1 (f d1 d2) (common r1 r2)
-  in
-  common m1 m2
-
-  let commoni f m1 m2 =
-    let rec common m1 m2 =
-    match (m1, m2) with
-    | (Emptyzz, t2) -> Emptyzz
-    | (t1, Emptyzz) -> Emptyzz
-    | (Nodezz(l1, x1, d1, r1, _), t2) ->
-	match split x1 t2 with
-	| (l2, None, r2) ->
-	    concat (common l1 l2) (common r1 r2)
-	| (l2, (Some d2), r2) ->
-	    join (common l1 l2) x1 (f x1 d1 d2) (common r1 r2)
-  in
-  common m1 m2
-
-  let interset m1 s2 =
-    let rec interset m1 s2 =
-      match (m1, s2) with
-      | (Emptyzz, t2) -> Emptyzz
-      | (t1, Sette.Emptyzz) -> Emptyzz
-      | (Nodezz(l1, x1, d1, r1, _), t2) ->
-	  match Setkey.splitzz x1 t2 with
-	  | (l2, false, r2) ->
-	      concat (interset l1 l2) (interset r1 r2)
-	  | (l2, true, r2) ->
-	      join (interset l1 l2) x1 d1 (interset r1 r2)
-    in
-    interset m1 (Setkey.repr s2)
-
-  let diffset m1 s2 =
-    let rec diffset m1 s2 =
-      match (m1, s2) with
-      | (Emptyzz, t2) -> Emptyzz
-      | (t1, Sette.Emptyzz) -> t1
-      | (Nodezz(l1, x1, d1, r1, _), t2) ->
-	  match Setkey.splitzz x1 t2 with
-	  (l2, false, r2) ->
-	    join (diffset l1 l2) x1 d1 (diffset r1 r2)
-	  | (l2, true, r2) ->
-	      concat (diffset l1 l2) (diffset r1 r2)
-    in
-    diffset m1 (Setkey.repr s2)
-
   let iter = iter
   let map = map
-  let maptoset x = Setkey.obj (Sette.repr (maptoset (repr x)))
-  let mapofset f x = mapofset f (Sette.obj (Setkey.repr x))
-
   let mapi = mapi
   let fold = fold
-
-  let filter p m =
-    let rec filt accu = function
-      | Emptyzz -> accu
-      | Nodezz(l, v, d, r, _) ->
-	  filt (filt (if p v d then add v d accu else accu) l) r in
-    filt Emptyzz m
-
-  let partition p m =
-    let rec part (t, f as accu) = function
-      | Emptyzz -> accu
-      | Nodezz(l, v, d, r, _) ->
-	  part (part (if p v d then (add v d t, f) else (t, add v d f)) l) r in
-    part (Emptyzz, Emptyzz) m
-
+  let maptoset x = Setkey.obj (maptoset (repr x))
+  let mapofset f x = mapofset f (Setkey.repr x)
   let cardinal = cardinal
   let choose = choose
 
-  type 'a enumeration = End | More of key * 'a * 'a t * 'a enumeration
-
-  let rec cons_enum m e =
-    match m with
-    | Emptyzz -> e
-    | Nodezz(l, v, d, r, _) -> cons_enum l (More(v, d, r, e))
-
-  let compare cmp m1 m2 =
-    let rec compare_aux e1 e2 =
-      match (e1, e2) with
-      | (End, End) -> 0
-      | (End, _)  -> -1
-      | (_, End) -> 1
-    | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
-	let c = Setkey.Ord.compare v1 v2 in
-	if c <> 0 then c else
-	  let c = cmp d1 d2 in
-	  if c <> 0 then c else
-	    compare_aux (cons_enum r1 e1) (cons_enum r2 e2)
-    in
-    compare_aux (cons_enum m1 End) (cons_enum m2 End)
-
-  let comparei cmp m1 m2 =
-    let rec compare_aux e1 e2 =
-      match (e1, e2) with
-      | (End, End) -> 0
-      | (End, _)  -> -1
-      | (_, End) -> 1
-    | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
-	let c = Setkey.Ord.compare v1 v2 in
-	if c <> 0 then c else
-	  let c = cmp v1 d1 d2 in
-	  if c <> 0 then c else
-	    compare_aux (cons_enum r1 e1) (cons_enum r2 e2)
-    in
-    compare_aux (cons_enum m1 End) (cons_enum m2 End)
-
-  let equal cmp m1 m2 =
-    let rec equal_aux e1 e2 =
-      match (e1, e2) with
-      (End, End) -> true
-      | (End, _)  -> false
-      | (_, End) -> false
-      | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
-	  Setkey.Ord.compare v1 v2 = 0 && cmp d1 d2 &&
-      equal_aux (cons_enum r1 e1) (cons_enum r2 e2)
-    in
-    equal_aux (cons_enum m1 End) (cons_enum m2 End)
-
-  let equali cmp m1 m2 =
-    let rec equal_aux e1 e2 =
-      match (e1, e2) with
-      (End, End) -> true
-      | (End, _)  -> false
-      | (_, End) -> false
-      | (More(v1, d1, r1, e1), More(v2, d2, r2, e2)) ->
-	  Setkey.Ord.compare v1 v2 = 0 && cmp v1 d1 d2 &&
-      equal_aux (cons_enum r1 e1) (cons_enum r2 e2)
-    in
-    equal_aux (cons_enum m1 End) (cons_enum m2 End)
-
-  let subset cmp m1 m2 =
-    let rec subset_aux m1 m2 =
-      match (m1, m2) with
-      Emptyzz, _ ->
-        true
-      | _, Emptyzz ->
-          false
-      | Nodezz (l1, v1, d1, r1, _), (Nodezz (l2, v2, d2, r2, _) as t2) ->
-          let c = Setkey.Ord.compare v1 v2 in
-          if c = 0 then
-            cmp d1 d2 && subset_aux l1 l2 && subset_aux r1 r2
-          else if c < 0 then
-            subset_aux (Nodezz (l1, v1, d1, Emptyzz, 0)) l2 && subset_aux r1 t2
-          else
-            subset_aux (Nodezz (Emptyzz, v1, d1, r1, 0)) r2 && subset_aux l1 t2
-    in
-    subset_aux m1 m2
-      
-  let subseti cmp m1 m2 =
-    let rec subset_aux m1 m2 =
-      match (m1, m2) with
-      Emptyzz, _ ->
-        true
-      | _, Emptyzz ->
-          false
-      | Nodezz (l1, v1, d1, r1, _), (Nodezz (l2, v2, d2, r2, _) as t2) ->
-          let c = Setkey.Ord.compare v1 v2 in
-          if c = 0 then
-            cmp v1 d1 d2 && subset_aux l1 l2 && subset_aux r1 r2
-          else if c < 0 then
-            subset_aux (Nodezz (l1, v1, d1, Emptyzz, 0)) l2 && subset_aux r1 t2
-          else
-            subset_aux (Nodezz (Emptyzz, v1, d1, r1, 0)) r2 && subset_aux l1 t2
-    in
-    subset_aux m1 m2
-      
-  let rec merge dmerge m1 m2 =
-    match (m1, m2) with
-    | (Emptyzz, t2) -> t2
-    | (t1, Emptyzz) -> t1
-    | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
-	if h1 >= h2 then begin
-	  let (l2, pres, r2) = split x1 m2 in
-	  join
-	    (merge dmerge l1 l2)
-	    x1
-	    (match pres with None -> d1 | Some d2 -> dmerge d1 d2)
-	    (merge dmerge r1 r2)
-	end
-	else begin
-	  let (l1, pres, r1) = split x2 m1 in
-	  join
-	    (merge dmerge l1 l2)
-	    x2
-	    (match pres with None -> d2 | Some d1 -> dmerge d1 d2)
-	    (merge dmerge r1 r2)
-	end
-	  
-  let rec mergei dmerge m1 m2 =
-    match (m1, m2) with
-    | (Emptyzz, t2) -> t2
-    | (t1, Emptyzz) -> t1
-    | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
-	if h1 >= h2 then begin
-	  let (l2, pres, r2) = split x1 m2 in
-	  join
-	    (mergei dmerge l1 l2)
-	    x1
-	    (match pres with None -> d1 | Some d2 -> dmerge x1 d1 d2)
-	    (mergei dmerge r1 r2)
-	end
-	else begin
-	  let (l1, pres, r1) = split x2 m1 in
-	  join
-	    (mergei dmerge l1 l2)
-	    x2
-	    (match pres with None -> d2 | Some d1 -> dmerge x1 d1 d2)
-	    (mergei dmerge r1 r2)
-	end
-	  
-  let rec combine dcombine m1 m2
-    =
-    match (m1, m2) with
-    | (Emptyzz, t2) ->
-	fold
-	(fun k d res ->
-	  match dcombine k None (Some d) with
-	  | None -> res
-	  | Some d -> add k d res
-	)
-	t2 empty
-    | (t1, Emptyzz) ->
-	fold
-	(fun k d res ->
-	  match dcombine k (Some d) None with
-	  | None -> res
-	  | Some d -> add k d res
-	)
-	t1 empty
-    | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
-	if h1 >= h2 then begin
-	  let (l2, pres, r2) = split x1 m2 in
-	  let data = dcombine x1 (Some d1) pres in
-	  match data with
-	  | None ->
-	      concat (combine dcombine l1 l2) (combine dcombine r1 r2)
-	  | Some d ->
-	      join
-	      (combine dcombine l1 l2)
-	      x1 d
-	      (combine dcombine r1 r2)
-	end
-	else begin
-	  let (l1, pres, r1) = split x2 m1 in 
-	  let data = dcombine x2 pres (Some d2)in
-	  match data with
-	  | None ->
-	      concat (combine dcombine l1 l2) (combine dcombine r1 r2)
-	  | Some d ->
-	      join
-	      (combine dcombine l1 l2)
-	      x2 d
-	      (combine dcombine r1 r2)
-	end
-	  
+  let add x data map = Compare.add Setkey.Ord.compare x data map
+  let find x map = Compare.find Setkey.Ord.compare x map
+  let mem x map = Compare.mem Setkey.Ord.compare x map
+  let remove x map = Compare.remove Setkey.Ord.compare x map
+  let interset m1 s2 = Compare.interset Setkey.Ord.compare m1 (Setkey.repr s2)
+  let diffset m1 s2 = Compare.diffset Setkey.Ord.compare m1 (Setkey.repr s2)
+  let filter f m = Compare.filter Setkey.Ord.compare f m
+  let partition f m = Compare.partition Setkey.Ord.compare f m
+  let compare cmp m1 m2 = Compare.compare Setkey.Ord.compare cmp m1 m2
+  let comparei cmp m1 m2 = Compare.comparei Setkey.Ord.compare cmp m1 m2
+  let equal cmp m1 m2 = Compare.equal Setkey.Ord.compare cmp m1 m2
+  let equali cmp m1 m2 = Compare.equali Setkey.Ord.compare cmp m1 m2
+  let subset cmp m1 m2 = Compare.subset Setkey.Ord.compare cmp m1 m2
+  let subseti cmp m1 m2 = Compare.subseti Setkey.Ord.compare cmp m1 m2
+  let common f m1 m2 = Compare.common Setkey.Ord.compare f m1 m2
+  let commoni f m1 m2 = Compare.commoni Setkey.Ord.compare f m1 m2
+  let addmap m1 m2 = Compare.addmap Setkey.Ord.compare m1 m2
+  let merge dmerge m1 m2 = Compare.merge Setkey.Ord.compare dmerge m1 m2
+  let mergei dmerge m1 m2 = Compare.mergei Setkey.Ord.compare dmerge m1 m2
+  let combine dcombine m1 m2 = Compare.combine Setkey.Ord.compare dcombine m1 m2
   let print = print
 end
 
-let rec merge dmerge m1 m2 =
-  match (m1, m2) with
-  | (Emptyzz, t2) -> t2
-  | (t1, Emptyzz) -> t1
-  | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
-      if h1 >= h2 then begin
-	let (l2, pres, r2) = split x1 m2 in
-	join
-	  (merge dmerge l1 l2)
-	  x1
-	  (match pres with None -> d1 | Some d2 -> dmerge d1 d2)
-	  (merge dmerge r1 r2)
-      end
-      else begin
-	let (l1, pres, r1) = split x2 m1 in
-	join
-	  (merge dmerge l1 l2)
-	  x2
-	  (match pres with None -> d2 | Some d1 -> dmerge d1 d2)
-	  (merge dmerge r1 r2)
-      end
-	
-let rec mergei dmerge m1 m2 =
-  match (m1, m2) with
-  | (Emptyzz, t2) -> t2
-  | (t1, Emptyzz) -> t1
-  | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
-      if h1 >= h2 then begin
-	let (l2, pres, r2) = split x1 m2 in
-	join
-	  (mergei dmerge l1 l2)
-	  x1
-	  (match pres with None -> d1 | Some d2 -> dmerge x1 d1 d2)
-	  (mergei dmerge r1 r2)
-      end
-      else begin
-	let (l1, pres, r1) = split x2 m1 in
-	join
-	  (mergei dmerge l1 l2)
-	  x2
-	  (match pres with None -> d2 | Some d1 -> dmerge x1 d1 d2)
-	  (mergei dmerge r1 r2)
-      end
-	
-let rec combine
-  (dcombine: 'a -> 'b option -> 'c option -> 'd option)
-  (m1:('a,'b) t)
-  (m2:('a,'c) t)
-  :
-  ('a,'d) t
-  =
-  match (m1, m2) with
-  | (Emptyzz, t2) ->
-      fold
-      (fun k d res ->
-	match dcombine k None (Some d) with
-	| None -> res
-	| Some d -> add k d res
-      )
-      t2 empty
-  | (t1, Emptyzz) ->
-      fold
-      (fun k d res ->
-	match dcombine k (Some d) None with
-	| None -> res
-	| Some d -> add k d res
-      )
-      t1 empty
-  | (Nodezz(l1, x1, d1, r1, h1), Nodezz(l2, x2, d2, r2, h2)) ->
-      if h1 >= h2 then begin
-	let (l2, pres, r2) = split x1 m2 in
-	let data = dcombine x1 (Some d1) pres in
-	match data with
-	| None ->
-	    concat (combine dcombine l1 l2) (combine dcombine r1 r2)
-	| Some d ->
-	    join
-	    (combine dcombine l1 l2)
-	    x1 d
-	    (combine dcombine r1 r2)
-      end
-      else begin
-	let (l1, pres, r1) = split x2 m1 in 
-	let data = dcombine x2 pres (Some d2)in
-	match data with
-	| None ->
-	    concat (combine dcombine l1 l2) (combine dcombine r1 r2)
-	| Some d ->
-	    join
-	    (combine dcombine l1 l2)
-	    x2 d
-	    (combine dcombine r1 r2)
-      end
-	
+module Custom = struct
+  type ('a,'b) t = {
+    compare : ('a -> 'a -> int);
+    map : ('a,'b) map
+  }
+  let make compare map = {compare=compare;map=map}
+
+  let is_empty (t:('a,'b) t) = t.map==Empty
+  let empty compare = make compare empty
+  let iter f t = iter f t.map
+  let map f t = make t.compare (map f t.map)
+  let mapi f t = make t.compare (mapi f t.map)
+  let fold f t acc = fold f t.map acc
+  let maptoset t = Sette.Custom.make t.compare (maptoset t.map)
+  let mapofset f t = make t.Sette.Custom.compare (mapofset f t.Sette.Custom.set)
+  let cardinal t = cardinal t.map
+  let choose t = choose t.map
+
+  let add x data t = make t.compare (Compare.add t.compare x data t.map)
+  let find x t = Compare.find t.compare x t.map
+  let mem x t = Compare.mem t.compare x t.map
+  let remove x t = make t.compare (Compare.remove t.compare x t.map)
+  let interset m1 s2 =
+    assert(m1.compare==s2.Sette.Custom.compare);
+    make m1.compare
+      (Compare.interset m1.compare m1.map s2.Sette.Custom.set)
+  let diffset m1 s2 =
+    assert(m1.compare==s2.Sette.Custom.compare);
+    make m1.compare
+      (Compare.diffset m1.compare m1.map s2.Sette.Custom.set)
+  let filter f m = make m.compare (Compare.filter m.compare f m.map)
+  let partition f m =
+    let (m1,m2) = Compare.partition m.compare f m.map in
+    (make m.compare m1, make m.compare m2)
+
+  let mapfm12b foo cmp m1 m2 =
+    assert(m1.compare==m2.compare);
+    foo m1.compare cmp m1.map m2.map
+  let compare cmp m1 m2 = mapfm12b Compare.compare cmp m1 m2
+  let comparei cmp m1 m2 = mapfm12b Compare.comparei cmp m1 m2
+  let equal cmp m1 m2 = mapfm12b Compare.equal cmp m1 m2
+  let equali cmp m1 m2 = mapfm12b Compare.equali cmp m1 m2
+  let subset cmp m1 m2 = mapfm12b Compare.subset cmp m1 m2
+  let subseti cmp m1 m2 = mapfm12b Compare.subseti cmp m1 m2
+
+  let mapfm12m foo f m1 m2 =
+    assert(m1.compare==m2.compare);
+    make m1.compare (foo m1.compare f m1.map m2.map)
+
+  let common f m1 m2 = mapfm12m Compare.common f m1 m2
+  let commoni f m1 m2 = mapfm12m Compare.commoni f m1 m2
+  let addmap m1 m2 = 
+    assert(m1.compare==m2.compare);
+    make m1.compare (Compare.addmap m1.compare m1.map m2.map)
+  let merge f m1 m2 = mapfm12m Compare.merge f m1 m2
+  let mergei f m1 m2 = mapfm12m Compare.mergei f m1 m2
+  let combine f m1 m2 = mapfm12m Compare.combine f m1 m2
+
+  let print ?first ?sep ?last ?firstbind ?sepbind ?lastbind px py fmt m =
+    print ?first ?sep ?last ?firstbind ?sepbind ?lastbind px py fmt m.map
+end

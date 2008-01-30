@@ -8,7 +8,7 @@ SRCDIR = $(shell pwd)
 PREFIX = $(CAMLLIB_PREFIX)
 
 FILES = print sette mappe hashhe \
-	setteI mappeI hashheI hashheIB \
+	setteI setteS mappeI mappeS hashheI hashheIB hashheS \
 	dMappe dHashhe \
 	setList multiSetList \
 	ilist fGraph1 fGraph sHGraph symbol union \
