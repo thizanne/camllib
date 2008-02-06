@@ -49,6 +49,17 @@ let bal l x d r =
   end else
     Node(l, x, d, r, (if hl >= hr then hl + 1 else hr + 1))
 
+(** Smallest and greatest key of a map *)
+let rec min_key = function
+    Empty -> raise Not_found
+  | Node(Empty, x, d, r, _) -> x
+  | Node(l, x, d, r, _) -> min_key l
+
+let rec max_key = function
+    Empty -> raise Not_found
+  | Node(l, x, d, Empty, _) -> x
+  | Node(l, x, d, r, _) -> max_key r
+
 let rec min_binding = function
   Empty -> raise Not_found
   | Node(Empty, x, d, r, _) -> (x, d)
@@ -553,6 +564,8 @@ module type S = sig
   val filter: (key -> 'a -> bool) -> 'a t -> 'a t
   val partition: (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
   val cardinal : 'a t -> int
+  val min_key: 'a t -> key
+  val max_key: 'a t -> key
   val choose : 'a t -> key * 'a
   val print :
     ?first:(unit, Format.formatter, unit) format ->
@@ -586,6 +599,8 @@ module Make(Setkey : Sette.S) = struct
   let maptoset x = Setkey.obj (maptoset (repr x))
   let mapofset f x = mapofset f (Setkey.repr x)
   let cardinal = cardinal
+  let min_key = min_key
+  let max_key = max_key
   let choose = choose
 
   let add x data map = Compare.add Setkey.Ord.compare x data map
@@ -627,6 +642,8 @@ module Custom = struct
   let maptoset t = Sette.Custom.make t.compare (maptoset t.map)
   let mapofset f t = make t.Sette.Custom.compare (mapofset f t.Sette.Custom.set)
   let cardinal t = cardinal t.map
+  let min_key t = min_key t.map
+  let max_key t = max_key t.map
   let choose t = choose t.map
 
   let add x data t = make t.compare (Compare.add t.compare x data t.map)

@@ -30,7 +30,7 @@ type ('a,'b) t = ('a,'b) map
       (** The type of maps from type ['a] to type ['b]. *)
 
 val is_empty : ('a,'b) t -> bool
-          (** Is the map empty ? *)
+	  (** Is the map empty ? *)
 val empty: ('a,'b) t
 	  (** The empty map. *)
 val add: 'a -> 'b -> ('a,'b) t -> ('a,'b) t
@@ -74,9 +74,9 @@ val diffset : ('a,'b) t -> 'a Sette.t -> ('a,'b) t
 val iter: ('a -> 'b -> unit) -> ('a,'b) t -> unit
 	(** [iter f m] applies [f] to all bindings in map [m].
 	    [f] receives the key as first argument, and the associated value as
- 	    second argument. The order in which the bindings are passed to [f]
- 	    is unspecified. Only current bindings are presented to [f]:
- 	    bindings hidden by more recent bindings are not passed to [f]. *)
+	    second argument. The order in which the bindings are passed to [f]
+	    is unspecified. Only current bindings are presented to [f]:
+	    bindings hidden by more recent bindings are not passed to [f]. *)
 val map: ('b -> 'c) -> ('a,'b) t -> ('a,'c) t
 	(** [map f m] returns a map with same domain as [m], where the
 	    associated value [a] of all bindings of [m] has been replaced by
@@ -115,8 +115,14 @@ val partition: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t * ('a,'b) t
 	  [p]. *)
 val cardinal: ('a,'b) t -> int
 	(** Number of keys of a map *)
+val min_key: ('a,'b) t -> 'a
+    (** Return the smallest key of the given map or
+      raise [Not_found] if the set is empty. *)
+val max_key: ('a,'b) t -> 'a
+    (** Same as [min_elt], but returns the largest key of the given
+       map. *)
 val choose : ('a,'b) t -> 'a * 'b
-        (** Returns a binding, or raise [Not_found] if empty *)
+	(** Returns a binding, or raise [Not_found] if empty *)
 val print :
     ?first:(unit, Format.formatter, unit) format ->
     ?sep:(unit, Format.formatter, unit) format ->
@@ -167,6 +173,8 @@ module type S = sig
   val filter: (key -> 'a -> bool) -> 'a t -> 'a t
   val partition: (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
   val cardinal : 'a t -> int
+  val min_key: 'a t -> key
+  val max_key: 'a t -> key
   val choose : 'a t -> key * 'a
   val print :
     ?first:(unit, Format.formatter, unit) format ->
@@ -220,6 +228,8 @@ module Custom : sig
   val filter: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t
   val partition: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t * ('a,'b) t
   val cardinal: ('a,'b) t -> int
+  val min_key: ('a,'b) t -> 'a
+  val max_key: ('a,'b) t -> 'a
   val choose : ('a,'b) t -> 'a * 'b
   val print :
       ?first:(unit, Format.formatter, unit) format ->
@@ -247,10 +257,10 @@ module Compare : sig
   val mergei :
     ('a -> 'a -> int) ->
     ('a -> 'b -> 'b -> 'b) -> ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
-  val common : 
+  val common :
     ('a -> 'a -> int) ->
     ('b -> 'c -> 'd) -> ('a, 'b) t -> ('a, 'c) t -> ('a, 'd) t
-  val commoni : 
+  val commoni :
     ('a -> 'a -> int) ->
     ('a -> 'b -> 'c -> 'd) -> ('a, 'b) t -> ('a, 'c) t -> ('a, 'd) t
   val combine :
@@ -278,7 +288,7 @@ module Compare : sig
     ('a -> 'a -> int) ->
     ('a -> 'b -> 'c -> bool) -> ('a, 'b) t -> ('a, 'c) t -> bool
   val filter :
-    ('a -> 'a -> int) -> 
+    ('a -> 'a -> int) ->
     ('a -> 'b -> bool) -> ('a, 'b) t -> ('a, 'b) t
   val partition :
     ('a -> 'a -> int) ->
