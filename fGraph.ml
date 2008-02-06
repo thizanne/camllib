@@ -10,11 +10,13 @@ type ('a,'b) node = {
     pred: 'a Sette.t;
     attrvertex: 'b
   }
-type ('a,'b,'c,'d) t = {
+type ('a,'b,'c,'d) graph = {
     nodes: ('a, ('a,'b) node) Mappe.t;
     arcs: ('a*'a,'c) Mappe.t;
     info: 'd;
   }
+
+type ('a,'b,'c,'d) t = ('a,'b,'c,'d) graph
 
 let info g = g.info
 let set_info g info = { g with info=info }
@@ -490,19 +492,8 @@ let print_dot
   fprintf fmt "@]@.}@.";
   ()
 
-type ('a,'b) nodezz = {
-    succzz: 'a Sette.t;
-    predzz: 'a Sette.t;
-    attrvertexzz: 'b
-  }
-type ('a,'b,'c,'d) tzz = {
-    nodeszz: ('a, ('a,'b) nodezz) Mappe.t;
-    arcszz: ('a*'a,'c) Mappe.t;
-    infozz: 'd;
-  }
-
-let repr : ('a,'b,'c,'d) t -> ('a,'b,'c,'d)  tzz = Obj.magic
-let obj : ('a,'b,'c,'d) tzz -> ('a,'b,'c,'d) t = Obj.magic
+let repr x = x
+let obj x = x
 
 (*  ********************************************************************** *)
 (** {2 Functor version} *)
@@ -605,19 +596,8 @@ module type S = sig
     (Format.formatter -> vertex*vertex -> 'c -> unit) ->
     Format.formatter -> ('b,'c,'d) t -> unit
 
-  type 'b nodezz = {
-    succzz: SetV.t;
-    predzz: SetV.t;
-    attrvertexzz: 'b
-  }
-  type ('b,'c,'d) tzz = {
-    nodeszz: 'b nodezz MapV.t;
-    arcszz: 'c MapE.t;
-    infozz : 'd;
-  }
-
-  val repr : ('b,'c,'d) t -> ('b,'c,'d)  tzz
-  val obj : ('b,'c,'d) tzz -> ('b,'c,'d) t
+  val repr : ('b,'c,'d) t -> (vertex,'b,'c,'d) graph
+  val obj : (vertex,'b,'c,'d) graph -> ('b,'c,'d) t
 end
 
 module Make(T : T) : (S with type vertex=T.MapV.key
@@ -657,7 +637,7 @@ struct
   let size_vertex g = MapV.cardinal g.nodes
   let size_edge g = MapE.cardinal g.arcs
   let size g = (size_vertex g, size_edge g)
-    
+
   let is_empty g = (g.nodes = MapV.empty)
   let is_vertex g i =
     try let _ = node g i in true
@@ -759,7 +739,7 @@ struct
 	info = g.info;
       }
       with Not_found -> failwith "FGraph.remove_edge"
-    else 
+    else
       g
 
   let add_vertex g v attrvertex =
@@ -1117,19 +1097,6 @@ struct
     fprintf fmt "@]@.}@.";
     ()
 
-
-  type 'b nodezz = {
-    succzz: SetV.t;
-    predzz: SetV.t;
-    attrvertexzz: 'b
-  }
-  type ('b,'c,'d) tzz = {
-    nodeszz: 'b nodezz MapV.t;
-    arcszz: 'c MapE.t;
-    infozz : 'd;
-  }
-
-  let repr : ('b,'c,'d) t -> ('b,'c,'d)  tzz = Obj.magic
-  let obj : ('b,'c,'d) tzz -> ('b,'c,'d) t = Obj.magic
-
+  let repr = Obj.magic
+  let obj = Obj.magic
 end

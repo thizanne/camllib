@@ -1,5 +1,16 @@
 (** Directed graphs, functional API, with two-way information maintained, *)
 
+type ('a,'b) node = {
+    succ: 'a Sette.t;
+    pred: 'a Sette.t;
+    attrvertex: 'b
+  }
+type ('a,'b,'c,'d) graph = {
+    nodes: ('a, ('a,'b) node) Mappe.t;
+    arcs: ('a*'a,'c) Mappe.t;
+    info: 'd;
+  }
+
 (*  ********************************************************************** *)
 (** {2 Polymorphic version} *)
 (*  ********************************************************************** *)
@@ -79,18 +90,8 @@ val print_dot :
   (Format.formatter -> 'a * 'a -> 'c -> unit) ->
   Format.formatter -> ('a,'b,'c,'d) t -> unit
 
-type ('a,'b) nodezz = {
-    succzz: 'a Sette.t;
-    predzz: 'a Sette.t;
-    attrvertexzz: 'b
-  }
-type ('a,'b,'c,'d) tzz = {
-    nodeszz: ('a, ('a,'b) nodezz) Mappe.t;
-    arcszz: ('a*'a,'c) Mappe.t;
-    infozz: 'd;
-  }
-val repr : ('a,'b,'c,'d) t -> ('a,'b,'c,'d)  tzz
-val obj : ('a,'b,'c,'d) tzz -> ('a,'b,'c,'d) t
+val repr : ('a,'b,'c,'d) t -> ('a,'b,'c,'d) graph
+val obj : ('a,'b,'c,'d) graph -> ('a,'b,'c,'d) t
 
 (*  ********************************************************************** *)
 (** {2 Functor version} *)
@@ -192,19 +193,8 @@ module type S = sig
     (Format.formatter -> vertex*vertex -> 'c -> unit) ->
     Format.formatter -> ('b,'c,'d) t -> unit
 
-  type 'b nodezz = {
-    succzz: SetV.t;
-    predzz: SetV.t;
-    attrvertexzz: 'b
-  }
-  type ('b,'c,'d) tzz = {
-    nodeszz: 'b nodezz MapV.t;
-    arcszz: 'c MapE.t;
-    infozz : 'd;
-  }
-
-  val repr : ('b,'c,'d) t -> ('b,'c,'d)  tzz
-  val obj : ('b,'c,'d) tzz -> ('b,'c,'d) t
+  val repr : ('b,'c,'d) t -> (vertex,'b,'c,'d) graph
+  val obj : (vertex,'b,'c,'d) graph -> ('b,'c,'d) t
 end
 
 module Make(T : T) : (S with type vertex=T.MapV.key
