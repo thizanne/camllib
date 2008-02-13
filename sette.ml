@@ -280,10 +280,10 @@ module Compare = struct
     compare_aux l1 l2
 
   let equal (compare:'a -> 'a -> int) (s1:'a t) (s2:'a t) =
-    compare_aux compare [s1] [s2] = 0
+    s1==s2 || compare_aux compare [s1] [s2] = 0
 
   let compare (compare:'a -> 'a -> int) s1 s2 =
-    compare_aux compare [s1] [s2]
+    if s1==s2 then 0 else compare_aux compare [s1] [s2]
 
   let subset (compare:'a -> 'a -> int) s1 s2 =
     let rec subset s1 s2 =
@@ -301,7 +301,7 @@ module Compare = struct
 	  else
 	    subset (Node (Empty, v1, r1, 0)) r2 && subset l1 t2
     in
-    subset s1 s2
+    s1==s2 || (subset s1 s2)
 
   let filter (compare:'a -> 'a -> int) p s =
     let rec filt accu = function

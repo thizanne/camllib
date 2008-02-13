@@ -326,7 +326,7 @@ module Compare = struct
 	    if c <> 0 then c else
 	      compare_aux (cons_enum r1 e1) (cons_enum r2 e2)
     in
-    compare_aux (cons_enum m1 End) (cons_enum m2 End)
+    if m1==(Obj.magic m2) then 0 else compare_aux (cons_enum m1 End) (cons_enum m2 End)
 
   let comparei (compare:'a -> 'a -> int) cmp m1 m2 =
     let rec compare_aux e1 e2 =
@@ -341,7 +341,7 @@ module Compare = struct
 	    if c <> 0 then c else
 	      compare_aux (cons_enum r1 e1) (cons_enum r2 e2)
     in
-    compare_aux (cons_enum m1 End) (cons_enum m2 End)
+    if m1==(Obj.magic m2) then 0 else compare_aux (cons_enum m1 End) (cons_enum m2 End)
 
   let equal (compare:'a -> 'a -> int) cmp m1 m2 =
     let rec equal_aux e1 e2 =
@@ -353,7 +353,7 @@ module Compare = struct
 	  compare v1 v2 = 0 && cmp d1 d2 &&
       equal_aux (cons_enum r1 e1) (cons_enum r2 e2)
     in
-    equal_aux (cons_enum m1 End) (cons_enum m2 End)
+    m1==(Obj.magic m2) || equal_aux (cons_enum m1 End) (cons_enum m2 End)
 
   let equali (compare:'a -> 'a -> int) cmp m1 m2 =
     let rec equal_aux e1 e2 =
@@ -365,7 +365,7 @@ module Compare = struct
 	  compare v1 v2 = 0 && cmp v1 d1 d2 &&
       equal_aux (cons_enum r1 e1) (cons_enum r2 e2)
     in
-    equal_aux (cons_enum m1 End) (cons_enum m2 End)
+    m1==(Obj.magic m2) || equal_aux (cons_enum m1 End) (cons_enum m2 End)
 
   let subset (compare:'a -> 'a -> int) cmp m1 m2 =
     let rec subset_aux m1 m2 =
@@ -383,7 +383,7 @@ module Compare = struct
 	  else
 	    subset_aux (Node (Empty, v1, d1, r1, 0)) r2 && subset_aux l1 t2
     in
-    subset_aux m1 m2
+    m1==(Obj.magic m2) || subset_aux m1 m2
 
   let subseti (compare:'a -> 'a -> int) cmp m1 m2 =
     let rec subset_aux m1 m2 =
@@ -401,7 +401,7 @@ module Compare = struct
 	  else
 	    subset_aux (Node (Empty, v1, d1, r1, 0)) r2 && subset_aux l1 t2
     in
-    subset_aux m1 m2
+    m1==(Obj.magic m2) || subset_aux m1 m2
 
   let rec merge (compare:'a -> 'a -> int) dmerge m1 m2 =
     match (m1, m2) with
