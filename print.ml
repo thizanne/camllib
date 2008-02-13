@@ -98,6 +98,33 @@ let hash
     hash;
   Format.fprintf formatter last
 
+let weak
+  ?(first=("[|@[":(unit,Format.formatter,unit) format))
+  ?(sep = (";@ ":(unit,Format.formatter,unit) format))
+  ?(last = ("@]|]":(unit,Format.formatter,unit) format))
+  (print_elt: Format.formatter -> 'a -> unit)
+  (fmt:Format.formatter)
+  (array: 'a Weak.t)
+  : unit
+  =
+  if (Weak.length array)=0 then begin
+    fprintf fmt first;
+    fprintf fmt last;
+  end
+  else begin
+    fprintf fmt first;
+    let first = ref true in
+    for i=0 to pred (Weak.length array) do
+      let oelt = Weak.get array i in
+      match oelt with
+      | None -> ()
+      | Some e -> 
+          if !first then first := false else fprintf fmt sep;
+	  fprintf fmt "%i => %a" i print_elt e
+    done;
+    fprintf fmt last;
+  end
+    
 let print_of_string
   (string_of_a:'a -> string)
   :

@@ -48,6 +48,14 @@ val hash :
     Format.formatter -> ('a,'b) Hashtbl.t -> unit
   (** Print an hashtable *)
 
+val weak :
+    ?first:(unit, Format.formatter, unit) format ->
+    ?sep:(unit, Format.formatter, unit) format ->
+    ?last:(unit, Format.formatter, unit) format ->
+    (Format.formatter -> 'a -> unit) ->
+    Format.formatter -> 'a Weak.t -> unit
+  (** Print a weak pointer array *)
+
 (** {2 Useful functions} *)
 
 val string_of_print:
