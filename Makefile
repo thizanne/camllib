@@ -7,7 +7,7 @@ include Makefile.config
 SRCDIR = $(shell pwd)
 PREFIX = $(CAMLLIB_PREFIX)
 
-FILES = print sette mappe hashhe weakke weaktbl \
+FILES = print sette mappe hashhe weakke weakketbl weaktbl \
 	setteI setteS mappeI mappeS hashheI hashheIB hashheS \
 	dMappe dHashhe \
 	setList multiSetList \
@@ -94,9 +94,9 @@ dot: $(INT) $(FILES:%=%.mli)
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $(SRCDIR)/$<
 
 depend: 
-	$(OCAMLDEP) $^ > Makefile.depend
+	$(OCAMLDEP) $(SRC) > Makefile.depend
 
 Makefile.depend:
-	$(OCAMLDEP) $^ > Makefile.depend
+	$(OCAMLDEP) $(SRC) > Makefile.depend
 
 -include Makefile.depend

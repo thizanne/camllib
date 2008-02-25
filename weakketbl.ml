@@ -14,17 +14,35 @@
 (* $Id: weak.ml,v 1.14 2007/02/16 16:05:36 doligez Exp $ *)
 (* Modified by Bertrand Jeannet, provides only weak hashtables *)
 
-type 'a hashtbl = {
-  mutable table : 'a Weak.t array;
+type ('a,'b) hashtbl = {
+  mutable table : ('a Weak.t * 'b) Weak.t array;
   mutable totsize : int;             (* sum of the bucket sizes *)
   mutable limit : int;               (* max ratio totsize/table length *)
 }
-type 'a t = 'a hashtbl
+type ('a,'b) t = ('a,'b) hashtbl
 
 type 'a compare = {
   hash : 'a -> int;
   equal : 'a -> 'a -> bool;
 }
+
+let box k =
+  let wk = Weak.create 1 in
+  Weak.set wk 0 (Some k);
+  wk
+let unbox wk =
+  Weak.get wk 0
+
+let weak_get bucket i = 
+  match Weak.get bucket i with
+  | Some (wk,d) -> 
+      begin match unbox wk with
+      | Some k -> Some (k,d)
+      | None ->
+	  Weak.set bucket i None;
+	  None
+      end
+  | None -> None
 
 let weak_get_copy = Weak.get
 
@@ -49,8 +67,8 @@ let clear t =
 let fold f t init =
   let rec fold_bucket i b accu =
     if i >= Weak.length b then accu else
-      match Weak.get b i with
-      | Some v -> fold_bucket (i+1) b (f v accu)
+      match weak_get b i with
+      | Some (k,d) -> fold_bucket (i+1) b (f k d accu)
       | None -> fold_bucket (i+1) b accu
   in
   Array.fold_right (fold_bucket 0) t.table init
@@ -58,8 +76,8 @@ let fold f t init =
 let iter f t =
   let rec iter_bucket i b =
     if i >= Weak.length b then () else
-      match Weak.get b i with
-      | Some v -> f v; iter_bucket (i+1) b
+      match weak_get b i with
+      | Some (k,d) -> f k d; iter_bucket (i+1) b
       | None -> iter_bucket (i+1) b
   in
   Array.iter (iter_bucket 0) t.table
@@ -67,7 +85,12 @@ let iter f t =
 let count t =
   let rec count_bucket i b accu =
     if i >= Weak.length b then accu else
-      count_bucket (i+1) b (accu + (if Weak.check b i then 1 else 0))
+      let n = 
+	match weak_get b i with
+	| Some (k,d) -> 1
+	| None -> 0
+      in
+      count_bucket (i+1) b (accu + n)
   in
   Array.fold_right (count_bucket 0) t.table 0
 
@@ -84,25 +107,33 @@ let print
   ?(first : (unit, Format.formatter, unit) format = ("[@[<hv>" : (unit, Format.formatter, unit) format))
   ?(sep : (unit, Format.formatter, unit) format = (";@ ":(unit, Format.formatter, unit) format))
   ?(last : (unit, Format.formatter, unit) format = ("@]]":(unit, Format.formatter, unit) format))
-  (print_data:Format.formatter -> 'a -> unit)
+  ?(firstbind : (unit, Format.formatter, unit) format = ("" : (unit, Format.formatter, unit) format))
+  ?(sepbind : (unit, Format.formatter, unit) format = (" => ":(unit, Format.formatter, unit) format))
+  ?(lastbind : (unit, Format.formatter, unit) format = ("":(unit, Format.formatter, unit) format))
+  (print_key:Format.formatter -> 'a -> unit)
+  (print_data:Format.formatter -> 'b -> unit)
   (formatter:Format.formatter)
-  (hash:'a hashtbl)
+  (hash:('a,'b) hashtbl)
   : unit
   =
   Format.fprintf formatter first;
   let firstitem = ref true in
   iter
-    (begin fun data ->
+    (begin fun key data ->
       if !firstitem then firstitem := false else Format.fprintf formatter sep;
+      Format.fprintf formatter firstbind;
+      print_key formatter key;
+      Format.fprintf formatter sepbind;
       print_data formatter data;
+      Format.fprintf formatter lastbind;
     end)
     hash;
   Format.fprintf formatter last
 
 module Compare = struct
 
-  let get_index compare t d =
-    (compare.hash d land max_int) mod (Array.length t.table);;
+  let get_index compare t k =
+    (compare.hash k land max_int) mod (Array.length t.table);;
 
   let rec resize compare t =
     let oldlen = Array.length t.table in
@@ -110,13 +141,13 @@ module Compare = struct
     if newlen > oldlen then begin
       let newt = create newlen in
       newt.limit <- t.limit + 100;          (* prevent resizing of newt *)
-      fold (fun d () -> add compare newt d) t ();
+      fold (fun k d () -> add compare newt k d) t ();
    (* assert Array.length newt.table = newlen; *)
       t.table <- newt.table;
    (* t.limit <- t.limit + 2; -- performance bug *)
     end
 
-  and add_aux compare t d index =
+  and add_aux compare t k d index =
     let bucket = t.table.(index) in
     let sz = Weak.length bucket in
     let rec loop i =
@@ -125,113 +156,106 @@ module Compare = struct
 	if newsz <= sz then failwith "Weak.Make : hash bucket cannot grow more";
 	let newbucket = Weak.create newsz in
 	Weak.blit bucket 0 newbucket 0 sz;
-	Weak.set newbucket i (Some d);
+	Weak.set newbucket i (Some ((box k), d));
 	t.table.(index) <- newbucket;
 	t.totsize <- t.totsize + (newsz - sz);
 	if t.totsize > t.limit * Array.length t.table then resize compare t;
       end else begin
 	if Weak.check bucket i
 	then loop (i+1)
-	else Weak.set bucket i (Some d)
+	else Weak.set bucket i (Some ((box k), d));
       end
     in
     loop 0;
 
-  and add compare t d = add_aux compare t d (get_index compare t d)
-
-  let find_or (compare:'a compare) t d ifnotfound =
-    let index = get_index compare t d in
+  and add compare (t:('a,'b) t) (k:'a) (d:'b) = 
+    add_aux compare t k d (get_index compare t k)
+    
+  let find_or (compare:'a compare) t key ifnotfound =
+    let index = get_index compare t key in
     let bucket = t.table.(index) in
     let sz = Weak.length bucket in
     let rec loop i =
       if i >= sz then ifnotfound index
       else begin
-	match weak_get_copy bucket i with
-	| Some v when compare.equal v d
-	   -> begin match Weak.get bucket i with
-	      | Some v -> v
-	      | None -> loop (i+1)
-	      end
+	match weak_get bucket i with
+	| Some (k,d) when compare.equal k key -> d
 	| _ -> loop (i+1)
       end
     in
     loop 0
 
-  let merge (compare:'a compare) t d =
-    find_or compare t d (fun index -> add_aux compare t d index; d)
+  let find (compare:'a compare) t k =
+    find_or compare t k (fun index -> raise Not_found)
 
-  let find (compare:'a compare) t d =
-    find_or compare t d (fun index -> raise Not_found)
-
-  let find_shadow (compare:'a compare) t d iffound ifnotfound =
-    let index = get_index compare t d in
+  let find_shadow (compare:'a compare) t key iffound ifnotfound =
+    let index = get_index compare t key in
     let bucket = t.table.(index) in
     let sz = Weak.length bucket in
     let rec loop i =
       if i >= sz then ifnotfound else begin
-	match weak_get_copy bucket i with
-	| Some v when compare.equal v d -> iffound bucket i
+	match weak_get bucket i with
+	| Some (k,d) when compare.equal k key -> iffound bucket i
 	| _ -> loop (i+1)
       end
     in
     loop 0
-
-  let remove (compare:'a compare) t d =
-    find_shadow compare t d (fun w i -> Weak.set w i None) ()
-
-  let mem (compare:'a compare) t d =
-    find_shadow compare t d (fun w i -> true) false
-
-  let find_all compare t d =
-    let index = get_index compare t d in
+      
+  let remove (compare:'a compare) t k =
+    find_shadow compare t k (fun w i -> Weak.set w i None) ()
+      
+  let mem (compare:'a compare) t k =
+    find_shadow compare t k (fun w i -> true) false
+      
+  let find_all compare t key =
+    let index = get_index compare t key in
     let bucket = t.table.(index) in
     let sz = Weak.length bucket in
     let rec loop i accu =
       if i >= sz then accu
       else begin
-	match weak_get_copy bucket i with
-	| Some v when compare.equal v d
-	   -> begin match Weak.get bucket i with
-	      | Some v -> loop (i+1) (v::accu)
-	      | None -> loop (i+1) accu
-	      end
+	match weak_get bucket i with
+	| Some (k,d) when compare.equal k key -> loop (i+1) (d::accu)
 	| _ -> loop (i+1) accu
       end
     in
     loop 0 []
-
+      
 end
 
 (** Weak hash tables *)
 
 module type S = sig
-  type data
-  type t
-  val create : int -> t
-  val clear : t -> unit
-  val merge : t -> data -> data
-  val add : t -> data -> unit
-  val remove : t -> data -> unit
-  val find : t -> data -> data
-  val find_all : t -> data -> data list
-  val mem : t -> data -> bool
-  val iter : (data -> unit) -> t -> unit
-  val fold : (data -> 'a -> 'a) -> t -> 'a -> 'a
-  val count : t -> int
-  val stats : t -> int * int * int * int * int * int
+  type key
+  type 'a t = (key,'a) hashtbl
+  val create : int -> 'a t
+  val clear : 'a t -> unit
+  val add : 'a t -> key -> 'a -> unit
+  val remove : 'a t -> key -> unit
+  val find : 'a t -> key -> 'a
+  val find_all : 'a t -> key -> 'a list
+  val mem : 'a t -> key -> bool
+  val iter : (key -> 'a -> unit) -> 'a t -> unit
+  val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+  val count : 'a t -> int
+  val stats : 'a t -> int * int * int * int * int * int
   val print :
     ?first:(unit, Format.formatter, unit) format ->
     ?sep:(unit, Format.formatter, unit) format ->
     ?last:(unit, Format.formatter, unit) format ->
-    (Format.formatter -> data -> unit) ->
-    Format.formatter -> t -> unit
+    ?firstbind:(unit, Format.formatter, unit) format ->
+    ?sepbind:(unit, Format.formatter, unit) format ->
+    ?lastbind:(unit, Format.formatter, unit) format ->
+    (Format.formatter -> key -> unit) ->
+    (Format.formatter -> 'a -> unit) ->
+    Format.formatter -> 'a t -> unit
 end
 
-module Make (H : Hashtbl.HashedType) : (S with type data = H.t
-					  and type t = H.t hashtbl) =
+module Make (H : Hashtbl.HashedType) : (S with type key = H.t
+					  and type 'a t = (H.t,'a) hashtbl) =
 struct
-  type data = H.t
-  type t = H.t hashtbl
+  type key = H.t
+  type 'a t = (key,'a) hashtbl
 
   let compare = { hash = H.hash; equal = H.equal }
 
@@ -240,44 +264,46 @@ struct
   let fold = fold
   let iter = iter
   let count = count
-  let add = Compare.add compare
-  let merge = Compare.merge compare
-  let find = Compare.find compare
-  let remove = Compare.remove compare
-  let mem = Compare.mem compare
-  let find_all = Compare.find_all compare
+  let add t k d = Compare.add compare t k d
+  let find t k = Compare.find compare t k
+  let remove t k = Compare.remove compare t k
+  let mem t k = Compare.mem compare t k
+  let find_all t k = Compare.find_all compare t k
   let stats = stats
   let print = print
 end
 
 module Custom = struct
-  type 'a t = {
+  type ('a,'b) t = {
     compare : 'a compare;
-    hashtbl:'a hashtbl;
+    hashtbl:('a,'b) hashtbl;
   }
 
-  let create (hash:'a -> int) (equal:'a -> 'a -> bool) n = 
+  let create_compare (cmp:'a compare) n = 
     {
-      compare = { 
-	hash=(fun x -> (hash x) land max_int);
-	equal=equal 
-      };
+      compare = cmp;
       hashtbl = create n
     }
+  let create (hash:'a -> int) (equal:'a -> 'a -> bool) n = 
+    let compare = { 
+	hash=(fun x -> (hash x) land max_int);
+	equal=equal 
+      }
+    in
+    create_compare compare n
+
   let clear t = clear t.hashtbl
   let fold f t init = fold f t.hashtbl init
   let iter f t = iter f t.hashtbl
   let count t = count t.hashtbl
   let add t data = Compare.add t.compare t.hashtbl data
-  let merge t data = Compare.merge t.compare t.hashtbl data
   let find t data = Compare.find t.compare t.hashtbl data
   let remove t data = Compare.remove t.compare t.hashtbl data
   let mem t data = Compare.mem t.compare t.hashtbl data
   let find_all t data = Compare.find_all t.compare t.hashtbl data
   let stats t = stats t.hashtbl
-  let print ?first ?sep ?last print_data fmt t = 
-    print
-      ?first ?sep ?last print_data fmt t.hashtbl
+  let print ?first ?sep ?last ?firstbind ?sepbind ?lastbind pa pb fmt t = 
+    print ?first ?sep ?last ?firstbind ?sepbind ?lastbind pa pb fmt t.hashtbl
 end
 
 
@@ -286,9 +312,8 @@ let compare = {
   equal=(=)
 }
 
-let add t data = Compare.add compare t data
-let merge t data = Compare.merge compare t data
-let find t data = Compare.find compare t data
-let remove t data = Compare.remove compare t data
-let mem t data = Compare.mem compare t data
-let find_all t data = Compare.find_all compare t data
+let add t k d = Compare.add compare t k d
+let find t key = Compare.find compare t key
+let remove t key = Compare.remove compare t key
+let mem t key = Compare.mem compare t key
+let find_all t key = Compare.find_all compare t key

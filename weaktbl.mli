@@ -20,6 +20,7 @@
     the standard Hashtbl module.
 *)
 
+(*
 module Stack : sig
   type 'a t
 end
@@ -27,6 +28,9 @@ type 'a box = 'a Weak.t
 type 'a bind = 'a box * Obj.t
 type 'a cls = 'a bind Stack.t
 type ('a,'b) hashtbl = 'a cls Weakke.t
+*)
+
+type ('a,'b) hashtbl
 
 (** {2 Generic interface} *)
 
@@ -144,7 +148,7 @@ module Make (H : Hashtbl.HashedType) : S with type key = H.t and type 'a t = (H.
 (** {2 Custom interface} *)
 						 
 module Custom : sig
-  type ('a, 'b) t = 'a cls Weakke.Custom.t
+  type ('a,'b) t
   val create : ('a -> int) -> ('a -> 'a -> bool) -> int -> ('a, 'b) t
   val clear : ('a,'b) t -> unit
   val find_all : ('a,'b) t -> 'a -> 'b list

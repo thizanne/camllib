@@ -106,7 +106,7 @@ let all_value (cls:'a cls) : 'b list =
 
 type ('a,'b) hashtbl = 'a cls Weakke.t
 type ('a,'b) t = ('a,'b) hashtbl
-
+  
 let iter (f:'a -> 'b -> unit) (tbl:('a,'b) t) : unit =
   let f' (bk,v) =
     match unbox bk with
@@ -119,7 +119,7 @@ let fold (f:'a -> 'b -> 'c -> 'c) (tbl:('a,'b) t) (accu:'c) :'c =
   let r = ref accu in
   let f' k v = r := f k v !r in
   iter f' tbl; !r
-
+    
 let length (tbl:('a,'b) t) =
   Weakke.fold
     (fun cls res -> res + (Stack.length cls))
@@ -258,7 +258,7 @@ module Custom = struct
 
   let create (hash:'a -> int) (equal:'a -> 'a -> bool) (n:int) : ('a,'b) t =
     let hash x =
-      try hash (top_key x) with Not_found -> 0
+      try (hash (top_key x)) land max_int with Not_found -> 0
     in
     let equal x y =
       try equal (top_key x) (top_key y) with Not_found -> false
