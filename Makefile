@@ -7,7 +7,7 @@ include Makefile.config
 SRCDIR = $(shell pwd)
 PREFIX = $(CAMLLIB_PREFIX)
 
-FILES = print sette mappe hashhe weakke weakketbl weaktbl \
+FILES = print sette mappe hashhe \
 	setteI setteS mappeI mappeS hashheI hashheIB hashheS \
 	dMappe dHashhe \
 	setList multiSetList \
