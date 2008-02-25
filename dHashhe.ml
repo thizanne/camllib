@@ -13,8 +13,8 @@ type ('a,'b) t = {
 let hashx t = t.xy
 let hashy t = t.yx
 
-let clear t = 
-  Hashhe.clear t.xy; 
+let clear t =
+  Hashhe.clear t.xy;
   Hashhe.clear t.yx;
   ()
 
@@ -25,11 +25,11 @@ let add t x y =
 
 let y_of_x t x = Hashhe.find t.xy x
 let x_of_y t y = Hashhe.find t.yx y
-let removex t x = 
+let removex t x =
   let y = y_of_x t x in
   Hashhe.remove t.xy x;
   Hashhe.remove t.yx y
-let removey t y = 
+let removey t y =
   let x = x_of_y t y in
   Hashhe.remove t.xy x;
   Hashhe.remove t.yx y
@@ -39,24 +39,24 @@ let memy t y = Hashhe.mem t.yx y
 let iter t f = Hashhe.iter f t.xy
 let fold t v f = Hashhe.fold f t.xy v
 let cardinal t = Hashhe.fold (fun x y res -> res+1) t.xy 0
-let print 
+let print
   ?(first : (unit, Format.formatter, unit) format = ("[@[<hv>" : (unit, Format.formatter, unit) format))
   ?(sep : (unit, Format.formatter, unit) format = (";@ ":(unit, Format.formatter, unit) format))
   ?(last : (unit, Format.formatter, unit) format = ("@]]":(unit, Format.formatter, unit) format))
   ?(firstbind : (unit, Format.formatter, unit) format = ("" : (unit, Format.formatter, unit) format))
   ?(sepbind : (unit, Format.formatter, unit) format = (" => ":(unit, Format.formatter, unit) format))
   ?(lastbind : (unit, Format.formatter, unit) format = ("":(unit, Format.formatter, unit) format))
-  px py fmt t 
-  = 
+  px py fmt t
+  =
   Hashhe.print ~first ~sep ~last ~firstbind ~sepbind ~lastbind
     px py
     fmt t.xy
 
 (** Input signature of the functor {!DHashhe.Make}. *)
 module type Param = sig
-  module HashX : Hashhe.S 
+  module HashX : Hashhe.S
     (** Hashtable for objects in the first place of bindings *)
-  module HashY : Hashhe.S 
+  module HashY : Hashhe.S
     (** Hashtable for objects in the second place of bindings *)
 end
 
@@ -89,7 +89,7 @@ module type S = sig
     ?sepbind:(unit, Format.formatter, unit) format ->
     ?lastbind:(unit, Format.formatter, unit) format ->
     (Format.formatter -> x -> unit) ->
-    (Format.formatter -> y -> unit) -> 
+    (Format.formatter -> y -> unit) ->
     Format.formatter -> t -> unit
 end
 
@@ -106,8 +106,8 @@ module Make(P : Param) = struct
   }
   let hashx t = t.xy
   let hashy t = t.yx
-  let clear t = 
-    HashX.clear t.xy; 
+  let clear t =
+    HashX.clear t.xy;
     HashY.clear t.yx;
     ()
 
@@ -117,11 +117,11 @@ module Make(P : Param) = struct
     HashY.add t.yx y x
   let y_of_x t x = HashX.find t.xy x
   let x_of_y t y = HashY.find t.yx y
-  let removex t x = 
+  let removex t x =
     let y = y_of_x t x in
     HashX.remove t.xy x;
     HashY.remove t.yx y
-  let removey t y = 
+  let removey t y =
     let x = x_of_y t y in
     HashX.remove t.xy x;
     HashY.remove t.yx y
@@ -131,15 +131,15 @@ module Make(P : Param) = struct
   let iter t f = HashX.iter f t.xy
   let fold t v f = HashX.fold f t.xy v
   let cardinal t = HashX.fold (fun x y res -> res+1) t.xy 0
-  let print 
+  let print
     ?(first : (unit, Format.formatter, unit) format option)
     ?(sep : (unit, Format.formatter, unit) format option)
     ?(last : (unit, Format.formatter, unit) format option)
     ?(firstbind : (unit, Format.formatter, unit) format option)
     ?(sepbind : (unit, Format.formatter, unit) format = (" <=> ":(unit, Format.formatter, unit) format))
     ?(lastbind : (unit, Format.formatter, unit) format option)
-    px py fmt t 
-    = 
+    px py fmt t
+    =
     let (hash:(x,y) Hashhe.t) = Obj.magic t.xy in
     Hashhe.print ?first ?sep ?last ?firstbind ~sepbind ?lastbind
     px py
@@ -147,3 +147,57 @@ module Make(P : Param) = struct
 
 end
 
+module Custom = struct
+  type ('a,'b) t = {
+    xy : ('a,'b) Hashhe.Custom.t;
+    yx : ('b,'a) Hashhe.Custom.t
+  }
+  let hashx t = t.xy
+  let hashy t = t.yx
+
+  let clear t =
+    Hashhe.Custom.clear t.xy;
+    Hashhe.Custom.clear t.yx;
+    ()
+
+  let create_compare cmpx cmpy size = {
+    xy = Hashhe.Custom.create_compare cmpx size; 
+    yx = Hashhe.Custom.create_compare cmpy size
+  }
+  let create hashx eqx hashy eqy size = { 
+    xy = Hashhe.Custom.create hashx eqx size; 
+    yx = Hashhe.Custom.create hashy eqy size
+  }
+  let add t x y =
+    Hashhe.Custom.add t.xy x y;
+    Hashhe.Custom.add t.yx y x
+
+  let y_of_x t x = Hashhe.Custom.find t.xy x
+  let x_of_y t y = Hashhe.Custom.find t.yx y
+  let removex t x =
+    let y = y_of_x t x in
+    Hashhe.Custom.remove t.xy x;
+    Hashhe.Custom.remove t.yx y
+  let removey t y =
+    let x = x_of_y t y in
+    Hashhe.Custom.remove t.xy x;
+    Hashhe.Custom.remove t.yx y
+      
+  let memx t x = Hashhe.Custom.mem t.xy x
+  let memy t y = Hashhe.Custom.mem t.yx y
+  let iter t f = Hashhe.Custom.iter f t.xy
+  let fold t v f = Hashhe.Custom.fold f t.xy v
+  let cardinal t = Hashhe.Custom.fold (fun x y res -> res+1) t.xy 0
+  let print
+    ?(first : (unit, Format.formatter, unit) format = ("[@[<hv>" : (unit, Format.formatter, unit) format))
+    ?(sep : (unit, Format.formatter, unit) format = (";@ ":(unit, Format.formatter, unit) format))
+    ?(last : (unit, Format.formatter, unit) format = ("@]]":(unit, Format.formatter, unit) format))
+    ?(firstbind : (unit, Format.formatter, unit) format = ("" : (unit, Format.formatter, unit) format))
+    ?(sepbind : (unit, Format.formatter, unit) format = (" => ":(unit, Format.formatter, unit) format))
+    ?(lastbind : (unit, Format.formatter, unit) format = ("":(unit, Format.formatter, unit) format))
+    px py fmt t
+    =
+    Hashhe.Custom.print ~first ~sep ~last ~firstbind ~sepbind ~lastbind
+      px py
+      fmt t.xy
+end

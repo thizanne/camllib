@@ -20,11 +20,16 @@
    Modified by B. Jeannet: functions [map] and [print].
 *)
 
+type ('a, 'b) hashtbl
+
+type 'a compare = {
+  hash : 'a -> int;
+  equal : 'a -> 'a -> bool;
+}
 
 (** {6 Generic interface} *)
 
-
-type ('a, 'b) t
+type ('a, 'b) t = ('a, 'b) hashtbl
 (** The type of hash tables from type ['a] to type ['b]. *)
 
 val create : int -> ('a, 'b) t
@@ -145,7 +150,7 @@ module type HashedType =
 module type S =
   sig
     type key
-    type 'a t
+    type 'a t = (key,'a) hashtbl
     val create : int -> 'a t
     val clear : 'a t -> unit
     val copy : 'a t -> 'a t
@@ -182,6 +187,39 @@ module Make (H : HashedType) : S with type key = H.t
     specified in the functor argument [H] instead of generic
     equality and hashing. *)
 
+(** {6 Custom interface} *)
+
+module Custom :
+  sig
+    type ('a, 'b) t = {
+      compare : 'a compare;
+      mutable hashtbl : ('a, 'b) hashtbl;
+    }
+    val create : ('a -> int) -> ('a -> 'a -> bool) -> int -> ('a, 'b) t
+    val create_compare : 'a compare -> int -> ('a, 'b) t
+    val clear : ('a, 'b) t -> unit
+    val add : ('a, 'b) t -> 'a -> 'b -> unit
+    val remove : ('a, 'b) t -> 'a -> unit
+    val find : ('a, 'b) t -> 'a -> 'b
+    val find_all : ('a, 'b) t -> 'a -> 'b list
+    val replace : ('a, 'b) t -> 'a -> 'b -> unit
+    val mem : ('a, 'b) t -> 'a -> bool
+    val copy : ('a, 'b) t -> ('a, 'b) t
+    val iter : ('a -> 'b -> 'c) -> ('a, 'b) t -> unit
+    val fold : ('a -> 'b -> 'c -> 'c) -> ('a, 'b) t -> 'c -> 'c
+    val map : ('a -> 'b -> 'c) -> ('a, 'b) t -> ('a, 'c) t
+    val length : ('a, 'b) t -> int
+    val print :
+      ?first:(unit, Format.formatter, unit) format ->
+      ?sep:(unit, Format.formatter, unit) format ->
+      ?last:(unit, Format.formatter, unit) format ->
+      ?firstbind:(unit, Format.formatter, unit) format ->
+      ?sepbind:(unit, Format.formatter, unit) format ->
+      ?lastbind:(unit, Format.formatter, unit) format ->
+      (Format.formatter -> 'a -> unit) ->
+      (Format.formatter -> 'b -> unit) ->
+      Format.formatter -> ('a, 'b) t -> unit
+  end
 
 (** {6 The polymorphic hash primitive} *)
 

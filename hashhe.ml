@@ -13,7 +13,7 @@
 
 (* $Id: hashhe.ml,v 1.1 2005/06/14 14:27:40 bjeannet Exp $ *)
 
-(* Modified by B. Jeannet: functions [map] and [print]. *)
+(* Modified by B. Jeannet: functions [map] and [print], module [Custom] *)
 
 (* Hash tables *)
 
@@ -24,13 +24,20 @@ let hash x = hash_param 10 100 x
 (* We do dynamic hashing, and resize the table and rehash the elements
    when buckets become too long. *)
 
-type ('a, 'b) t = 
+type ('a, 'b) hashtbl = 
   { mutable size: int;                        (* number of elements *)
     mutable data: ('a, 'b) bucketlist array } (* the buckets *)
 
 and ('a, 'b) bucketlist =
     Empty
   | Cons of 'a * 'b * ('a, 'b) bucketlist
+
+type ('a,'b) t = ('a,'b) hashtbl
+
+type 'a compare = {
+  hash : 'a -> int;
+  equal : 'a -> 'a -> bool;
+}
 
 let create initial_size =
   let s = min (max 1 initial_size) Sys.max_array_length in
@@ -55,97 +62,6 @@ let map f h =
     data = Array.map map_bucketlist h.data }
 
 let length h = h.size
-
-let resize hashfun tbl =
-  let odata = tbl.data in
-  let osize = Array.length odata in
-  let nsize = min (2 * osize + 1) Sys.max_array_length in
-  if nsize <> osize then begin
-    let ndata = Array.create nsize Empty in
-    let rec insert_bucket = function
-        Empty -> ()
-      | Cons(key, data, rest) ->
-          insert_bucket rest; (* preserve original order of elements *)
-          let nidx = (hashfun key) mod nsize in
-          ndata.(nidx) <- Cons(key, data, ndata.(nidx)) in
-    for i = 0 to osize - 1 do
-      insert_bucket odata.(i)
-    done;
-    tbl.data <- ndata;
-  end
-
-let add h key info =
-  let i = (hash key) mod (Array.length h.data) in
-  let bucket = Cons(key, info, h.data.(i)) in
-  h.data.(i) <- bucket;
-  h.size <- succ h.size;
-  if h.size > Array.length h.data lsl 1 then resize hash h
-
-let remove h key =
-  let rec remove_bucket = function
-      Empty ->
-        Empty
-    | Cons(k, i, next) ->
-        if compare k key = 0
-        then begin h.size <- pred h.size; next end
-        else Cons(k, i, remove_bucket next) in
-  let i = (hash key) mod (Array.length h.data) in
-  h.data.(i) <- remove_bucket h.data.(i)
-
-let rec find_rec key = function
-    Empty ->
-      raise Not_found
-  | Cons(k, d, rest) ->
-      if compare key k = 0 then d else find_rec key rest
-
-let find h key =
-  match h.data.((hash key) mod (Array.length h.data)) with
-    Empty -> raise Not_found
-  | Cons(k1, d1, rest1) ->
-      if compare key k1 = 0 then d1 else
-      match rest1 with
-        Empty -> raise Not_found
-      | Cons(k2, d2, rest2) ->
-          if compare key k2 = 0 then d2 else
-          match rest2 with
-            Empty -> raise Not_found
-          | Cons(k3, d3, rest3) ->
-              if compare key k3 = 0 then d3 else find_rec key rest3
-
-let find_all h key =
-  let rec find_in_bucket = function
-    Empty ->
-      []
-  | Cons(k, d, rest) ->
-      if compare k key = 0
-      then d :: find_in_bucket rest
-      else find_in_bucket rest in
-  find_in_bucket h.data.((hash key) mod (Array.length h.data))
-
-let replace h key info =
-  let rec replace_bucket = function
-      Empty ->
-        raise Not_found
-    | Cons(k, i, next) ->
-        if compare k key = 0
-        then Cons(k, info, next)
-        else Cons(k, i, replace_bucket next) in
-  let i = (hash key) mod (Array.length h.data) in
-  let l = h.data.(i) in
-  try
-    h.data.(i) <- replace_bucket l
-  with Not_found ->
-    h.data.(i) <- Cons(key, info, l);
-    h.size <- succ h.size;
-    if h.size > Array.length h.data lsl 1 then resize hash h
-
-let mem h key =
-  let rec mem_in_bucket = function
-  | Empty ->
-      false
-  | Cons(k, d, rest) ->
-      compare k key = 0 || mem_in_bucket rest in
-  mem_in_bucket h.data.((hash key) mod (Array.length h.data))
 
 let iter f h =
   let rec do_bucket = function
@@ -199,8 +115,109 @@ let print
     hash;
   Format.fprintf formatter last
  
+module Compare = struct
+  let resize compare tbl =
+    let odata = tbl.data in
+    let osize = Array.length odata in
+    let nsize = min (2 * osize + 1) Sys.max_array_length in
+    if nsize <> osize then begin
+      let ndata = Array.create nsize Empty in
+      let rec insert_bucket = function
+        | Empty -> ()
+	| Cons(key, data, rest) ->
+            insert_bucket rest; (* preserve original order of elements *)
+            let nidx = (compare.hash key) mod nsize in
+            ndata.(nidx) <- Cons(key, data, ndata.(nidx)) 
+      in
+      for i = 0 to osize - 1 do
+	insert_bucket odata.(i)
+      done;
+      tbl.data <- ndata;
+    end
 
-(* Functorial interface *)
+  let add compare h key info =
+    let i = (compare.hash key) mod (Array.length h.data) in
+    let bucket = Cons(key, info, h.data.(i)) in
+    h.data.(i) <- bucket;
+    h.size <- succ h.size;
+    if h.size > Array.length h.data lsl 1 then resize compare h
+      
+  let remove compare h key =
+    let rec remove_bucket = function
+     | Empty ->
+        Empty
+    | Cons(k, i, next) ->
+        if compare.equal k key
+        then begin h.size <- pred h.size; next end
+        else Cons(k, i, remove_bucket next) in
+    let i = (compare.hash key) mod (Array.length h.data) in
+    h.data.(i) <- remove_bucket h.data.(i)
+
+  let rec find_rec compare key = function
+    | Empty ->
+	raise Not_found
+    | Cons(k, d, rest) ->
+	if compare.equal key k then d else find_rec compare key rest
+	  
+  let find compare h key =
+    match h.data.((compare.hash key) mod (Array.length h.data)) with
+    | Empty -> raise Not_found
+    | Cons(k1, d1, rest1) ->
+	if compare.equal key k1 then d1 else
+	  match rest1 with
+          | Empty -> raise Not_found
+	  | Cons(k2, d2, rest2) ->
+              if compare.equal key k2 then d2 else
+		match rest2 with
+		| Empty -> raise Not_found
+		| Cons(k3, d3, rest3) ->
+		    if compare.equal key k3 then d3 else find_rec compare key rest3
+		      
+  let find_all compare h key =
+    let rec find_in_bucket = function
+      | Empty ->
+	  []
+      | Cons(k, d, rest) ->
+	  if compare.equal k key
+	  then d :: find_in_bucket rest
+	  else find_in_bucket rest in
+    find_in_bucket h.data.((compare.hash key) mod (Array.length h.data))
+
+  let replace compare h key info =
+    let rec replace_bucket = function
+      | Empty ->
+          raise Not_found
+      | Cons(k, i, next) ->
+          if compare.equal k key
+          then Cons(k, info, next)
+          else Cons(k, i, replace_bucket next) in
+    let i = (compare.hash key) mod (Array.length h.data) in
+    let l = h.data.(i) in
+    try
+      h.data.(i) <- replace_bucket l
+    with Not_found ->
+      h.data.(i) <- Cons(key, info, l);
+      h.size <- succ h.size;
+      if h.size > Array.length h.data lsl 1 then resize compare h
+	
+  let mem compare h key =
+    let rec mem_in_bucket = function
+      | Empty ->
+	  false
+      | Cons(k, d, rest) ->
+	  compare.equal k key || mem_in_bucket rest in
+    mem_in_bucket h.data.((compare.hash key) mod (Array.length h.data))
+end
+
+let stdcompare = { hash = hash; equal = (=) }
+let add h key info = Compare.add stdcompare h key info
+let replace h key info = Compare.replace stdcompare h key info
+let remove h key = Compare.remove stdcompare h key 
+let find h key = Compare.find stdcompare h key 
+let find_all h key = Compare.find_all stdcompare h key 
+let mem h key = Compare.mem stdcompare h key 
+
+(** Functorial interface *)
 
 module type HashedType =
   sig
@@ -212,7 +229,7 @@ module type HashedType =
 module type S =
   sig
     type key
-    type 'a t
+    type 'a t = (key,'a) hashtbl
     val create: int -> 'a t
     val clear: 'a t -> unit
     val copy: 'a t -> 'a t
@@ -238,95 +255,62 @@ module type S =
          Format.formatter -> 'a t -> unit
   end
 
-module Make(H: HashedType): (S with type key = H.t) =
+module Make(H: HashedType): (S with type key = H.t and type 'a t = (H.t,'a) hashtbl) =
   struct
     type key = H.t
-    type 'a hashtbl = (key, 'a) t
-    type 'a t = 'a hashtbl
+    type 'a t = (key,'a) hashtbl
     let create = create
     let clear = clear
     let copy = copy
     let map = map
-
-    let safehash key = (H.hash key) land max_int
-
-    let add h key info =
-      let i = (safehash key) mod (Array.length h.data) in
-      let bucket = Cons(key, info, h.data.(i)) in
-      h.data.(i) <- bucket;
-      h.size <- succ h.size;
-      if h.size > Array.length h.data lsl 1 then resize safehash h
-
-    let remove h key =
-      let rec remove_bucket = function
-          Empty ->
-            Empty
-        | Cons(k, i, next) ->
-            if H.equal k key
-            then begin h.size <- pred h.size; next end
-            else Cons(k, i, remove_bucket next) in
-      let i = (safehash key) mod (Array.length h.data) in
-      h.data.(i) <- remove_bucket h.data.(i)
-
-    let rec find_rec key = function
-        Empty ->
-          raise Not_found
-      | Cons(k, d, rest) ->
-          if H.equal key k then d else find_rec key rest
-
-    let find h key =
-      match h.data.((safehash key) mod (Array.length h.data)) with
-        Empty -> raise Not_found
-      | Cons(k1, d1, rest1) ->
-          if H.equal key k1 then d1 else
-          match rest1 with
-            Empty -> raise Not_found
-          | Cons(k2, d2, rest2) ->
-              if H.equal key k2 then d2 else
-              match rest2 with
-                Empty -> raise Not_found
-              | Cons(k3, d3, rest3) ->
-                  if H.equal key k3 then d3 else find_rec key rest3
-
-    let find_all h key =
-      let rec find_in_bucket = function
-        Empty ->
-          []
-      | Cons(k, d, rest) ->
-          if H.equal k key
-          then d :: find_in_bucket rest
-          else find_in_bucket rest in
-      find_in_bucket h.data.((safehash key) mod (Array.length h.data))
-
-    let replace h key info =
-      let rec replace_bucket = function
-          Empty ->
-            raise Not_found
-        | Cons(k, i, next) ->
-            if H.equal k key
-            then Cons(k, info, next)
-            else Cons(k, i, replace_bucket next) in
-      let i = (safehash key) mod (Array.length h.data) in
-      let l = h.data.(i) in
-      try
-        h.data.(i) <- replace_bucket l
-      with Not_found ->
-        h.data.(i) <- Cons(key, info, l);
-        h.size <- succ h.size;
-        if h.size > Array.length h.data lsl 1 then resize safehash h
-
-    let mem h key =
-      let rec mem_in_bucket = function
-      | Empty ->
-          false
-      | Cons(k, d, rest) ->
-          H.equal k key || mem_in_bucket rest in
-      mem_in_bucket h.data.((safehash key) mod (Array.length h.data))
-
     let iter = iter
     let fold = fold
     let length = length
     let print = print
-  end
 
-(* eof $Id: hashhe.ml,v 1.1 2005/06/14 14:27:40 bjeannet Exp $ *)
+    let compare = {
+      hash = (fun key -> (H.hash key) land max_int);
+      equal = H.equal
+    }
+    let add h key info = Compare.add compare h key info
+    let replace h key info = Compare.replace compare h key info
+    let remove h key = Compare.remove compare h key 
+    let find h key = Compare.find compare h key 
+    let find_all h key = Compare.find_all compare h key 
+    let mem h key = Compare.mem compare h key 
+end
+
+(** Custom interface *)
+
+module Custom = struct
+  type ('a,'b) t = {
+    compare : 'a compare;
+    mutable hashtbl : ('a,'b) hashtbl
+  }
+  let make compare hashtbl = { compare=compare; hashtbl=hashtbl }
+  let create_compare compare n = make compare (create n)
+  let create hash equal n = 
+    let compare = {
+      hash = (fun key -> (hash key) land max_int);
+      equal = equal
+    }
+    in
+    make compare (create n)
+      
+  let clear t = clear t.hashtbl
+  let copy t = make t.compare (copy t.hashtbl)
+  let map f t = make t.compare (map f t.hashtbl)
+  let iter f t = iter f t.hashtbl
+  let fold f t a = fold f t.hashtbl a
+  let length t = length t.hashtbl
+  let print ?first ?sep ?last ?firstbind ?sepbind ?lastbind pa pb fmt t = 
+    print ?first ?sep ?last ?firstbind ?sepbind ?lastbind pa pb fmt t.hashtbl
+
+  let add t key info = Compare.add t.compare t.hashtbl key info
+  let replace t key info = Compare.replace t.compare t.hashtbl key info
+  let remove t key = Compare.remove t.compare t.hashtbl key 
+  let find t key = Compare.find t.compare t.hashtbl key 
+  let find_all t key = Compare.find_all t.compare t.hashtbl key 
+  let mem t key = Compare.mem t.compare t.hashtbl key 
+end
+
