@@ -121,6 +121,17 @@ let rec fold f l accu =
   | (a,n)::l -> fold f l (f (a,n) accu)
 let fold_right = List.fold_right
 let fold_left = List.fold_left
+let filter p l =
+  let rec find accu = function
+    | [] -> List.rev accu
+    | (x,n) :: l -> if p x then find ((x,n) :: accu) l else find accu l 
+  in
+  find [] l
+let partition p l =
+  let rec part yes no = function
+    | [] -> (List.rev yes, List.rev no)
+    | (x,n) :: l -> if p x then part ((x,n) :: yes) no l else part yes ((x,n) :: no) l in
+  part [] [] l
 let cardinal = List.length
 let elements = to_set
 let min_elt = function
@@ -208,6 +219,8 @@ module type S =
     val fold: ((elt * int) -> 'a -> 'a) -> t -> 'a -> 'a
     val fold_right: ((elt * int) -> 'a -> 'a) -> t -> 'a -> 'a
     val fold_left: ('a -> (elt * int) -> 'a) -> 'a -> t -> 'a
+    val filter : (elt -> bool) ->  t -> t
+    val partition : (elt -> bool) ->  t -> t * t
     val cardinal: t -> int
     val elements: t -> elt SetList.t
     val min_elt: t -> elt
@@ -339,6 +352,8 @@ module Make(Ord: Set.OrderedType) = struct
   let fold = fold
   let fold_right = List.fold_right
   let fold_left = List.fold_left
+  let filter = filter
+  let partition = partition
   let cardinal = List.length
   let elements = elements
   let min_elt = min_elt

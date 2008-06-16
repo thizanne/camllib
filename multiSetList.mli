@@ -61,9 +61,17 @@ val fold : (('a * int) -> 'b -> 'b) -> 'a t -> 'b -> 'b
     *)
 val fold_right : (('a * int) -> 'b -> 'b) -> 'a t -> 'b -> 'b
 val fold_left : ('b -> ('a * int) -> 'b) -> 'b -> 'a t -> 'b
-    (** Idem as [List.fold_X] functions *)    
+    (** Idem as [List.fold_X] functions *)
+val filter : ('a -> bool) ->  'a t -> 'a t
+    (** [filter p l] returns all the elements of the multiset [l] that satisfy
+      the predicate [p]. *)
+val partition : ('a -> bool) ->  'a t -> 'a t * 'a t
+    (** [partition p l] returns a pair of multisets [(l1, l2)], where [l1] is
+      the multiset of all the elements of [l] that satisfy the predicate [p],
+      and [l2] is the multiset of all the elements of [l] that do not satisfy
+      [p]. *)
 val cardinal : 'a t -> int
-    (** Return the number of elements of a multiset. *)  
+    (** Return the number of elements of a multiset. *)
 val elements : 'a t -> 'a SetList.t
     (** Return the list of all elements of the given multiset.  The returned
       list is sorted in increasing order with respect to the ordering
@@ -156,9 +164,17 @@ module type S =
       *)
     val fold_right: ((elt * int) -> 'a -> 'a) -> t -> 'a -> 'a
     val fold_left: ('a -> (elt * int) -> 'a) -> 'a -> t -> 'a
-      (** Idem as [List.fold_X] functions *)    
+      (** Idem as [List.fold_X] functions *)
+    val filter : (elt -> bool) ->  t -> t
+      (** [filter p l] returns all the elements of the multiset [l] that
+	satisfy the predicate [p]. *)
+    val partition : (elt -> bool) ->  t -> t * t
+      (** [partition p l] returns a pair of multisets [(l1, l2)], where [l1] is
+      the multiset of all the elements of [l] that satisfy the predicate [p],
+      and [l2] is the multiset of all the elements of [l] that do not satisfy
+      [p]. *)
     val cardinal: t -> int
-      (** Return the number of elements of a multiset. *)  
+      (** Return the number of elements of a multiset. *)
     val elements: t -> elt SetList.t
       (** Return the list of all elements of the given multiset.  The returned
 	list is sorted in increasing order with respect to the ordering
@@ -189,9 +205,9 @@ module type S =
 	multiset is empty. Which element is chosen is unspecified, but equal
 	elements will be chosen for equal multisets. *)
     val of_set: elt SetList.t -> t
-        (** Conversion from sets of module [SetList]. *)
+	(** Conversion from sets of module [SetList]. *)
     val to_set: t -> elt SetList.t
-        (** [to_set m] returns the set of elements in the multiset [m]. *)
+	(** [to_set m] returns the set of elements in the multiset [m]. *)
     val print:
       ?first:(unit, Format.formatter, unit) format ->
       ?sep:(unit, Format.formatter, unit) format ->
