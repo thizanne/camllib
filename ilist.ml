@@ -45,10 +45,12 @@ let rec append l1 l2 = match l1 with
   Cons(x,l) -> Cons(x,append l l2)
 | Nil -> l2
 
-let rec mem x = function
-    Nil -> false
-  | Cons(Atome(a),reste) -> (a=x) or mem x reste
-  | Cons(List(l),reste) -> mem x l or mem x reste
+let rec exists p = function
+  | Nil -> false
+  | Cons(Atome(a),reste) -> p a || exists p reste
+  | Cons(List(l),reste) -> exists p l || exists p reste
+
+let mem x l = exists (fun a -> x=a) l
 
 let map f ilist = 
   let rec parcours flag = function

@@ -69,6 +69,7 @@ val print_of_string:
   (** Transforms a conversion-to-string function to a printing function. *)
 
 val sprintf:
+  ?margin:int ->
   ('a, Format.formatter, unit, string) format4 -> 'a
   (** Better [sprintf] function than [Format.sprintf], as it takes the same
     kind of formatters as other [Format.Xprintf] functions. *)

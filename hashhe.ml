@@ -230,6 +230,9 @@ module type S =
   sig
     type key
     type 'a t = (key,'a) hashtbl
+
+    module Hash : (HashedType with type t=key)
+
     val create: int -> 'a t
     val clear: 'a t -> unit
     val copy: 'a t -> 'a t
@@ -259,6 +262,7 @@ module Make(H: HashedType): (S with type key = H.t and type 'a t = (H.t,'a) hash
   struct
     type key = H.t
     type 'a t = (key,'a) hashtbl
+    module Hash = H
     let create = create
     let clear = clear
     let copy = copy

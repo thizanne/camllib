@@ -151,6 +151,8 @@ module type S =
   sig
     type key
     type 'a t = (key,'a) hashtbl
+    module Hash : (HashedType with type t=key)
+
     val create : int -> 'a t
     val clear : 'a t -> unit
     val copy : 'a t -> 'a t
@@ -245,3 +247,14 @@ external hash_param : int -> int -> 'a -> int = "caml_hash_univ_param" "noalloc"
    However, hashing takes longer. The parameters [m] and [n]
    govern the tradeoff between accuracy and speed. *)
 
+val stdcompare : 'a compare
+
+module Compare : sig
+  val resize : 'a compare -> ('a, 'b) hashtbl -> unit
+  val add : 'a compare -> ('a, 'b) hashtbl -> 'a -> 'b -> unit
+  val remove : 'a compare -> ('a, 'b) hashtbl -> 'a -> unit
+  val find : 'a compare -> ('a, 'b) hashtbl -> 'a -> 'b
+  val find_all : 'a compare -> ('a, 'b) hashtbl -> 'a -> 'b list
+  val replace : 'a compare -> ('a, 'b) hashtbl -> 'a -> 'b -> unit
+  val mem : 'a compare -> ('a, 'b) hashtbl -> 'a -> bool
+end

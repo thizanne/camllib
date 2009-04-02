@@ -27,11 +27,35 @@ vertex through this hyperedge only if {e all} origin vertices are reachable.
 
 *)
 
+type 'a priority =
+  | Filter of ('a -> bool)
+  | Priority of ('a -> int)
+(** Filtering or priority function (used by {!topological_sort}, {!cfc},
+  {!scfc}, {!topological_sort_multi}, {!cfc_multi}, {!scfc_multi}).
+
+  [Filter p] specifies [p] as a filtering function for hyperedges: only those
+  satisfying [p] are taken into account.
+
+  [Priority p] specifies [p] as a priority function. Hyperedges [h] with [p h <
+  0] are not taken into account. Otherwise, hyperedges with highest priority
+  are explored first.
+*)
+
+type ('a,'b) compare = {
+  hashv : 'a Hashhe.compare;
+  hashh : 'b Hashhe.compare;
+  comparev : 'a -> 'a -> int;
+  compareh : 'b -> 'b -> int;
+}
+type ('a,'b, 'c, 'd, 'e) graph
+
 (*  ********************************************************************** *)
 (** {2 Generic (polymorphic) interface} *)
 (*  ********************************************************************** *)
 
-type ('a,'b,'c,'d, 'e) t
+val stdcompare : ('a,'b) compare
+
+type ('a,'b,'c,'d, 'e) t = ('a,'b, 'c, 'd, 'e) graph
   (** The type of hypergraphs where {ul
       {- 'a : type of vertices}
       {- 'b : type of hedges}
@@ -107,8 +131,13 @@ val pred_vertex : ('a,'b,'c,'d,'e) t -> 'a -> 'a Sette.t
 val add_vertex : ('a,'b,'c,'d,'e) t -> 'a -> 'c -> unit
   (** Add a vertex *)
 val add_hedge : ('a,'b,'c,'d,'e) t -> 'b -> 'd -> pred:'a array -> succ:'a array -> unit
-  (** Add an hyperedge. The predecssor and successor vertices should already
-    exist in the graph. Otherwise, a [Failure] exception is raised. *)
+  (** Add an hyperedge. The predecessor and successor vertices
+      should already exist in the graph. Otherwise, a [Failure]
+      exception is raised. *)
+val replace_attrvertex : ('a,'b,'c,'d,'e) t -> 'a -> 'c -> unit
+  (** Change the attribute of an existing vertex *)
+val replace_attrhedge : ('a,'b,'c,'d,'e) t -> 'b -> 'd -> unit
+  (** Change the attribute of an existing hyperedge *)
 val remove_vertex : ('a,'b,'c,'d,'e) t -> 'a -> unit
   (** Remove the vertex from the graph, as well as all related hyperedges. *)
 val remove_hedge : ('a,'b,'c,'d,'e) t -> 'b -> unit
@@ -148,8 +177,8 @@ val fold_hedge :
 
 val map :
   ('a,'b,'c,'d,'e) t ->
-  ('a -> 'c -> pred:'b Sette.t -> succ:'b Sette.t -> 'cc) ->
-  ('b -> 'd -> pred:'a array -> succ:'a array -> 'dd) ->
+  ('a -> 'c -> 'cc) ->
+  ('b -> 'd -> 'dd) ->
   ('e -> 'ee) ->
   ('a,'b,'cc,'dd,'ee) t
 
@@ -174,7 +203,7 @@ val transpose :
   ('a,'b,'c,'d,'e) t ->
   ('a,'b,'cc,'dd,'ee) t
 (** Similar to [copy], but hyperedges are reversed: successor vertices
-  and predecssor vertices are exchanged. *)
+  and predecessor vertices are exchanged. *)
 
 (*  ====================================================================== *)
 (** {3 Algorithms} *)
@@ -189,7 +218,9 @@ val max : ('a,'b,'c,'d,'e) t -> 'a Sette.t
 (** {4 Topological sort} *)
 (*  ---------------------------------------------------------------------- *)
 
-val topological_sort : ('a,'b,'c,'d,'e) t -> 'a -> 'a list
+val topological_sort :
+  ?priority:'b priority ->
+  ('a,'b,'c,'d,'e) t -> 'a -> 'a list
   (** Topological sort of the vertices of the hypergraph starting from
     a root vertex. The graph supposed to be acyclic. Any hyperedge
     linking two vertices (which are resp. predecessor and successor)
@@ -197,15 +228,11 @@ val topological_sort : ('a,'b,'c,'d,'e) t -> 'a -> 'a list
     from the given root vertex.  If the dependencies are cyclic, the
     result is meaningless. *)
 val topological_sort_multi :
-  'a -> 'b -> ('a,'b,'c,'d,'e) t -> 'a Sette.t -> 'a list
+  'a -> 'b -> ?priority:'b priority ->
+  ('a,'b,'c,'d,'e) t -> 'a Sette.t -> 'a list
   (** Topological sort from a set of root vertices.  The two first
     arguments are supposed to be yet unused vertex and hyperedge
     identifier.*)
-val topological_sort_filter_multi :
-  'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> bool) -> 'a Sette.t -> 'a list
-  (** Variant of the previous function, where the Boolean function [f hedge
-    succ] tells whether the given dependency should be taken into account or
-    not in the sort. *)
 
 (*  ---------------------------------------------------------------------- *)
 (** {4 Reachability and coreachability} *)
@@ -215,24 +242,25 @@ val topological_sort_filter_multi :
  described above. *)
 
 val reachable :
-  ('a,'b,'c,'d,'e) t -> 'a -> 'a Sette.t * 'b Sette.t
+ ?filter:('b -> bool) ->
+ ('a,'b,'c,'d,'e) t -> 'a -> 'a Sette.t * 'b Sette.t
   (** Returns the set of vertices and hyperedges that are *NOT* reachable from
     the given root vertex. Any dependency in the sense described above is taken
     into account to define the reachability relation. For instance, if one of
     the predecessor vertex of an hyperedge is reachable, the hyperedge is
     considered as reachable. *)
 val reachable_multi :
-  'a -> 'b -> ('a,'b,'c,'d,'e) t -> 'a Sette.t -> 'a Sette.t * 'b Sette.t
+  'a -> 'b ->  ?filter:('b -> bool) ->
+  ('a,'b,'c,'d,'e) t -> 'a Sette.t -> 'a Sette.t * 'b Sette.t
   (* Reachability from a set of root vertices *)
-val reachable_filter_multi :
-  'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> bool) -> 'a Sette.t -> 'a Sette.t * 'b Sette.t
-  (* Reachability from a set of root vertices with filtering of dependencies *)
 
 (*  ---------------------------------------------------------------------- *)
 (** {4 Strongly Connected Components and SubComponents} *)
 (*  ---------------------------------------------------------------------- *)
 
-val cfc : ('a,'b,'c,'d,'e) t -> 'a -> 'a list list
+val cfc :
+  ?priority:'b priority ->
+  ('a,'b,'c,'d,'e) t -> 'a -> 'a list list
   (** Decomposition of the graph into Strongly Connected Components,
 
     [cfc graph vertex] returns a decomposition of the graph.  The exploration
@@ -243,7 +271,8 @@ val cfc : ('a,'b,'c,'d,'e) t -> 'a -> 'a list list
     components.  *)
 
 val cfc_multi :
-    'a -> 'b -> ('a,'b,'c,'d,'e) t -> 'a Sette.t -> 'a list list
+  'a -> 'b -> ?priority:'b priority ->
+  ('a,'b,'c,'d,'e) t -> 'a Sette.t -> 'a list list
   (** idem, but from several initial vertices.
 
     [cfc dummy_vertex dummy_hedge graph setvertices] returns a decomposition of
@@ -252,19 +281,9 @@ val cfc_multi :
     hyperedge identifiers.
   *)
 
-val cfc_filter_multi :
-  'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> bool) -> 'a Sette.t -> 'a list list
-  (** idem, but with a filtering of dependencies *)
-
-val cfc_priority_multi :
-  'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> int) -> 'a Sette.t -> 'a list list
-  (** idem, but with a priority of dependencies.
-
-    The priority function [p:'b -> int] filters out hyperedges [b] such that
-    [p b<0], and explores first hyperedges [b] with the highest priority.
-  *)
-
-val scfc : ('a,'b,'c,'d,'e) t -> 'a -> 'a Ilist.t
+val scfc :
+  ?priority:'b priority ->
+  ('a,'b,'c,'d,'e) t -> 'a -> 'a Ilist.t
   (** Decomposition of the graph into Strongly Connected Sub-Components,
 
     [scfc graph vertex] returns a decomposition of the graph.  The exploration
@@ -272,14 +291,9 @@ val scfc : ('a,'b,'c,'d,'e) t -> 'a -> 'a Ilist.t
     included in the result. The result has the structure [[comp1 comp2 comp3
     ...]] where each component is in turn decomposed into components.  *)
 val scfc_multi :
-    'a -> 'b -> ('a,'b,'c,'d,'e) t -> 'a Sette.t -> 'a Ilist.t
+  'a -> 'b -> ?priority:'b priority ->
+  ('a,'b,'c,'d,'e) t -> 'a Sette.t -> 'a Ilist.t
   (** idem, but from several initial vertices. *)
-val scfc_filter_multi :
-    'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> bool) -> 'a Sette.t -> 'a Ilist.t
-  (** idem, but with a filtering of dependencies *)
-val scfc_priority_multi :
-  'a -> 'b -> ('a,'b,'c,'d,'e) t -> ('b -> int) -> 'a Sette.t -> 'a Ilist.t
-  (** idem, but with a priority of dependencies. *)
 
 (*  ====================================================================== *)
 (** {3 Printing} *)
@@ -302,6 +316,8 @@ val print_dot :
   ?titlestyle:string ->
   ?vertexstyle:string ->
   ?hedgestyle:string ->
+  ?fvertexstyle:('a -> string) ->
+  ?fhedgestyle:('b -> string) ->
   ?title:string ->
   (Format.formatter -> 'a -> unit) ->
   (Format.formatter -> 'b -> unit) ->
@@ -378,12 +394,15 @@ end
 module type S = sig
   type vertex
   type hedge
+  val vertex_dummy : vertex
+  val hedge_dummy : hedge
 
   module SetV : (Sette.S with type elt=vertex)
   module SetH : (Sette.S with type elt=hedge)
   module HashV : (Hashhe.S with type key=vertex)
   module HashH : (Hashhe.S with type key=hedge)
 
+  val stdcompare : (vertex,hedge) compare
   type ('a,'b,'c) t
     (** Type of hypergraphs, where {ul
     {- 'a : information associated to vertices}
@@ -427,7 +446,8 @@ module type S = sig
 
   val add_vertex : ('a,'b,'c) t -> vertex -> 'a -> unit
   val add_hedge : ('a,'b,'c) t -> hedge -> 'b -> pred:vertex array -> succ:vertex array -> unit
-
+  val replace_attrvertex : ('a,'b,'c) t -> vertex -> 'a -> unit
+  val replace_attrhedge : ('a,'b,'c) t -> hedge -> 'b -> unit
   val remove_vertex : ('a,'b,'c) t -> vertex -> unit
   val remove_hedge : ('a,'b,'c) t -> hedge -> unit
 
@@ -450,14 +470,14 @@ module type S = sig
     (hedge -> 'b -> pred:vertex array -> succ:vertex array -> 'g -> 'g) ->
     'g -> 'g
 
+  (** {3 Copy and Transpose} *)
+
   val map :
     ('a,'b,'c) t ->
-    (vertex -> 'a -> pred:SetH.t -> succ:SetH.t -> 'aa) ->
-    (hedge -> 'b -> pred:vertex array -> succ:vertex array -> 'bb) ->
+    (vertex -> 'a -> 'aa) ->
+    (hedge -> 'b -> 'bb) ->
     ('c -> 'cc) ->
     ('aa,'bb,'cc) t
-
-  (** {3 Copy and Transpose} *)
 
   val copy :
     (vertex -> 'a -> 'aa) ->
@@ -478,36 +498,24 @@ module type S = sig
   val max : ('a,'b,'c) t -> SetV.t
 
   val topological_sort :
-    ('a,'b,'c) t -> vertex -> vertex list
+    ?priority:hedge priority -> ('a,'b,'c) t -> vertex -> vertex list
   val topological_sort_multi :
-    ('a,'b,'c) t -> SetV.t -> vertex list
-  val topological_sort_filter_multi :
-    ('a,'b,'c) t -> (hedge -> bool) -> SetV.t -> vertex list
+    ?priority:hedge priority -> ('a,'b,'c) t -> SetV.t -> vertex list
 
   val reachable :
-    ('a,'b,'c) t -> vertex -> SetV.t * SetH.t
+    ?filter:(hedge -> bool) -> ('a,'b,'c) t -> vertex -> SetV.t * SetH.t
   val reachable_multi :
-    ('a,'b,'c) t -> SetV.t -> SetV.t * SetH.t
-  val reachable_filter_multi :
-    ('a,'b,'c) t -> (hedge -> bool) -> SetV.t -> SetV.t * SetH.t
+    ?filter:(hedge -> bool) -> ('a,'b,'c) t -> SetV.t -> SetV.t * SetH.t
 
   val cfc :
-    ('a,'b,'c) t -> vertex -> vertex list list
+    ?priority:hedge priority -> ('a,'b,'c) t -> vertex -> vertex list list
   val cfc_multi :
-    ('a,'b,'c) t -> SetV.t -> vertex list list
-  val cfc_filter_multi :
-    ('a,'b,'c) t -> (hedge -> bool) -> SetV.t -> vertex list list
-  val cfc_priority_multi :
-    ('a,'b,'c) t -> (hedge -> int) -> SetV.t -> vertex list list
+    ?priority:hedge priority -> ('a,'b,'c) t -> SetV.t -> vertex list list
 
   val scfc :
-    ('a,'b,'c) t -> vertex -> vertex Ilist.t
+    ?priority:hedge priority -> ('a,'b,'c) t -> vertex -> vertex Ilist.t
   val scfc_multi :
-    ('a,'b,'c) t -> SetV.t -> vertex Ilist.t
-  val scfc_filter_multi :
-    ('a,'b,'c) t -> (hedge -> bool) -> SetV.t -> vertex Ilist.t
-  val scfc_priority_multi :
-    ('a,'b,'c) t -> (hedge -> int) -> SetV.t -> vertex Ilist.t
+    ?priority:hedge priority -> ('a,'b,'c) t -> SetV.t -> vertex Ilist.t
 
   (** {3 Printing} *)
 
@@ -524,6 +532,8 @@ module type S = sig
     ?titlestyle:string ->
     ?vertexstyle:string ->
     ?hedgestyle:string ->
+    ?fvertexstyle:(vertex -> string) ->
+    ?fhedgestyle:(hedge -> string) ->
     ?title:string ->
     (Format.formatter -> vertex -> unit) ->
     (Format.formatter -> hedge -> unit) ->
@@ -543,3 +553,204 @@ module Make(T : T) : (S with type vertex=T.vertex
 			and module SetH=T.SetH
 			and module HashV=T.HashV
 			and module HashH=T.HashH)
+
+(*  ********************************************************************** *)
+(** {2 Custom interface} *)
+(*  ********************************************************************** *)
+
+module Custom : sig
+  type ('a, 'b, 'c, 'd, 'e) t = {
+    compare : ('a, 'b) compare;
+    mutable graph : ('a, 'b, 'c, 'd, 'e) graph;
+  }
+  val make :
+    ('a, 'b) compare ->
+    ('a, 'b, 'c, 'd, 'e) graph -> ('a, 'b, 'c, 'd, 'e) t
+  val create_compare :
+    ('a, 'b) compare -> int -> 'c -> ('a, 'b, 'd, 'e, 'c) t
+  val create : ('a, 'b) compare -> int -> 'c -> ('a, 'b, 'd, 'e, 'c) t
+  val clear : ('a, 'b, 'c, 'd, 'e) t -> unit
+  val size_vertex : ('a, 'b, 'c, 'd, 'e) t -> int
+  val size_hedge : ('a, 'b, 'c, 'd, 'e) t -> int
+  val size_edgevh : ('a, 'b, 'c, 'd, 'e) t -> int
+  val size_edgehv : ('a, 'b, 'c, 'd, 'e) t -> int
+  val size : ('a, 'b, 'c, 'd, 'e) t -> int * int * int * int
+  val attrvertex : ('a, 'b, 'c, 'd, 'e) t -> 'a -> 'c
+  val attrhedge : ('a, 'b, 'c, 'd, 'e) t -> 'b -> 'd
+  val info : ('a, 'b, 'c, 'd, 'e) t -> 'e
+  val is_vertex : ('a, 'b, 'c, 'd, 'e) t -> 'a -> bool
+  val is_hedge : ('a, 'b, 'c, 'd, 'e) t -> 'b -> bool
+  val is_empty : ('a, 'b, 'c, 'd, 'e) t -> bool
+  val succhedge : ('a, 'b, 'c, 'd, 'e) t -> 'a -> 'b Sette.Custom.t
+  val predhedge : ('a, 'b, 'c, 'd, 'e) t -> 'a -> 'b Sette.Custom.t
+  val succvertex : ('a, 'b, 'c, 'd, 'e) t -> 'b -> 'a array
+  val predvertex : ('a, 'b, 'c, 'd, 'e) t -> 'b -> 'a array
+  val succ_vertex : ('a, 'b, 'c, 'd, 'e) t -> 'a -> 'a Sette.Custom.t
+  val pred_vertex : ('a, 'b, 'c, 'd, 'e) t -> 'a -> 'a Sette.Custom.t
+  val add_vertex : ('a, 'b, 'c, 'd, 'e) t -> 'a -> 'c -> unit
+  val add_hedge :
+    ('a, 'b, 'c, 'd, 'e) t ->
+      'b -> 'd -> pred:'a array -> succ:'a array -> unit
+  val replace_attrvertex : ('a, 'b, 'c, 'd, 'e) t -> 'a -> 'c -> unit
+  val replace_attrhedge : ('a, 'b, 'c, 'd, 'e) t -> 'b -> 'd -> unit
+  val remove_hedge : ('a, 'b, 'c, 'd, 'e) t -> 'b -> unit
+  val remove_vertex : ('a, 'b, 'c, 'd, 'e) t -> 'a -> unit
+  val iter_vertex :
+    ('a, 'b, 'c, 'd, 'e) t ->
+      ('a -> 'c -> pred:'b Sette.Custom.t -> succ:'b Sette.Custom.t -> unit) -> unit
+  val fold_vertex :
+    ('a, 'b, 'c, 'd, 'e) t ->
+    ('a -> 'c -> pred:'b Sette.Custom.t -> succ:'b Sette.Custom.t -> 'f -> 'f) ->
+    'f -> 'f
+  val iter_hedge :
+    ('a, 'b, 'c, 'd, 'e) t ->
+    ('b -> 'd -> pred:'a array -> succ:'a array -> unit) -> unit
+  val fold_hedge :
+    ('a, 'b, 'c, 'd, 'e) t ->
+    ('b -> 'd -> pred:'a array -> succ:'a array -> 'f -> 'f) -> 'f -> 'f
+  val map :
+    ('a, 'b, 'c, 'd, 'e) t ->
+    ('a -> 'c -> 'f) ->
+    ('b -> 'd -> 'g) ->
+    ('e -> 'h) -> ('a, 'b, 'f, 'g, 'h) t
+  val copy :
+    ('a -> 'b -> 'c) ->
+    ('d -> 'e -> 'f) ->
+    ('g -> 'h) -> ('a, 'd, 'b, 'e, 'g) t -> ('a, 'd, 'c, 'f, 'h) t
+  val transpose :
+    ('a -> 'b -> 'c) ->
+    ('d -> 'e -> 'f) ->
+    ('g -> 'h) -> ('a, 'd, 'b, 'e, 'g) t -> ('a, 'd, 'c, 'f, 'h) t
+  val topological_sort :
+    ?priority:'a priority -> ('b, 'a, 'c, 'd, 'e) t -> 'b -> 'b list
+  val topological_sort_multi :
+    'a ->
+    'b ->
+    ?priority:'b priority ->
+    ('a, 'b, 'c, 'd, 'e) t -> 'a Sette.Custom.t -> 'a list
+  val reachable :
+    ?filter:('a -> bool) ->
+    ('b, 'a, 'c, 'd, 'e) t -> 'b -> 'b Sette.Custom.t * 'a Sette.Custom.t
+  val reachable_multi :
+    'a -> 'b -> ?filter:('b -> bool) ->
+    ('a, 'b, 'c, 'd, 'e) t -> 'a Sette.Custom.t -> 'a Sette.Custom.t * 'b Sette.Custom.t
+  val cfc :
+    ?priority:'a priority -> ('b, 'a, 'c, 'd, 'e) t -> 'b -> 'b list list
+  val cfc_multi :
+    'a -> 'b -> ?priority:'b priority ->
+    ('a, 'b, 'c, 'd, 'e) t -> 'a Sette.Custom.t -> 'a list list
+  val scfc :
+    ?priority:'a priority -> ('b, 'a, 'c, 'd, 'e) t -> 'b -> 'b Ilist.t
+  val scfc_multi :
+    'a -> 'b ->	?priority:'b priority ->
+    ('a, 'b, 'c, 'd, 'e) t -> 'a Sette.Custom.t -> 'a Ilist.t
+  val print :
+    (Format.formatter -> 'a -> unit) ->
+    (Format.formatter -> 'b -> unit) ->
+    (Format.formatter -> 'c -> unit) ->
+    (Format.formatter -> 'd -> unit) ->
+    (Format.formatter -> 'e -> unit) ->
+    Format.formatter -> ('a, 'b, 'c, 'd, 'e) t -> unit
+  val print_dot :
+    ?style:string ->
+    ?titlestyle:string ->
+    ?vertexstyle:string ->
+    ?hedgestyle:string ->
+    ?fvertexstyle:('a -> string) ->
+    ?fhedgestyle:('b -> string) ->
+    ?title:string ->
+    (Format.formatter -> 'a -> unit) ->
+    (Format.formatter -> 'b -> unit) ->
+    (Format.formatter -> 'a -> 'c -> unit) ->
+    (Format.formatter -> 'b -> 'd -> unit) ->
+    Format.formatter -> ('a, 'b, 'c, 'd, 'e) t -> unit
+  val min : ('a, 'b, 'c, 'd, 'e) t -> 'a Sette.Custom.t
+  val max : ('a, 'b, 'c, 'd, 'e) t -> 'a Sette.Custom.t
+end
+
+(*  ********************************************************************** *)
+(** {2 Compare interface} *)
+(*  ********************************************************************** *)
+
+module Compare : sig
+  val attrvertex :
+    ('a, 'b) compare -> ('a, 'c, 'd, 'e, 'f) graph -> 'a -> 'd
+  val attrhedge :
+    ('a, 'b) compare -> ('c, 'b, 'd, 'e, 'f) graph -> 'b -> 'e
+  val is_vertex :
+    ('a, 'b) compare -> ('a, 'c, 'd, 'e, 'f) graph -> 'a -> bool
+  val is_hedge :
+    ('a, 'b) compare -> ('c, 'b, 'd, 'e, 'f) graph -> 'b -> bool
+  val succhedge :
+    ('a, 'b) compare -> ('a, 'c, 'd, 'e, 'f) graph -> 'a -> 'c Sette.t
+  val predhedge :
+    ('a, 'b) compare -> ('a, 'c, 'd, 'e, 'f) graph -> 'a -> 'c Sette.t
+  val succvertex :
+    ('a, 'b) compare -> ('c, 'b, 'd, 'e, 'f) graph -> 'b -> 'c array
+  val predvertex :
+    ('a, 'b) compare -> ('c, 'b, 'd, 'e, 'f) graph -> 'b -> 'c array
+  val succ_vertex :
+    ('a, 'b) compare -> ('a, 'b, 'c, 'd, 'e) graph -> 'a -> 'a Sette.t
+  val pred_vertex :
+    ('a, 'b) compare -> ('a, 'b, 'c, 'd, 'e) graph -> 'a -> 'a Sette.t
+  val add_vertex :
+    ('a, 'b) compare -> ('a, 'c, 'd, 'e, 'f) graph -> 'a -> 'd -> unit
+  val add_hedge :
+    ('a, 'b) compare ->
+    ('a, 'b, 'c, 'd, 'e) graph ->
+    'b -> 'd -> pred:'a array -> succ:'a array -> unit
+  val replace_attrvertex :
+    ('a, 'b) compare -> ('a, 'c, 'd, 'e, 'f) graph -> 'a -> 'd -> unit
+  val replace_attrhedge :
+    ('a, 'b) compare -> ('a, 'b, 'c, 'd, 'e) graph -> 'b -> 'd -> unit
+  val remove_hedge :
+    ('a, 'b) compare -> ('a, 'b, 'c, 'd, 'e) graph -> 'b -> unit
+  val remove_vertex :
+    ('a, 'b) compare -> ('a, 'b, 'c, 'd, 'e) graph -> 'a -> unit
+  val topological_sort :
+    ('a, 'b) compare ->
+    ?priority:'b priority -> ('a, 'b, 'c, 'd, 'e) t -> 'a -> 'a list
+  val topological_sort_multi :
+    ('a, 'b) compare ->
+    'a ->
+    'b ->
+    ?priority:'b priority ->
+    ('a, 'b, 'c, 'd, 'e) t -> 'a Sette.t -> 'a list
+  val reachable :
+    ('a, 'b) compare ->
+    ?filter:('b -> bool) ->
+    ('a, 'b, 'c, 'd, 'e) t -> 'a -> 'a Sette.t * 'b Sette.t
+  val reachable_multi :
+    ('a, 'b) compare ->
+    'a ->
+    'b ->
+    ?filter:('b -> bool) ->
+    ('a, 'b, 'c, 'd, 'e) t -> 'a Sette.t -> 'a Sette.t * 'b Sette.t
+  val cfc :
+    ('a, 'b) compare ->
+    ?priority:'b priority ->
+    ('a, 'b, 'c, 'd, 'e) graph -> 'a -> 'a list list
+  val cfc_multi :
+    ('a, 'b) compare ->
+    ?priority:'b priority ->
+    'a -> 'b -> ('a, 'b, 'c, 'd, 'e) graph -> 'a Sette.t -> 'a list list
+  val scfc :
+    ('a, 'b) compare ->
+    ?priority:'b priority -> ('a, 'b, 'c, 'd, 'e) graph -> 'a -> 'a Ilist.t
+  val scfc_multi :
+    ('a, 'b) compare ->
+    'a ->
+    'b ->
+    ?priority:'b priority ->
+    ('a, 'b, 'c, 'd, 'e) graph -> 'a Sette.t -> 'a Ilist.t
+  val print :
+    ('a, 'b) compare ->
+    (Format.formatter -> 'a -> unit) ->
+    (Format.formatter -> 'b -> unit) ->
+    (Format.formatter -> 'c -> unit) ->
+    (Format.formatter -> 'd -> unit) ->
+    (Format.formatter -> 'e -> unit) ->
+    Format.formatter -> ('a, 'b, 'c, 'd, 'e) graph -> unit
+  val min : ('a, 'b) compare -> ('a, 'c, 'd, 'e, 'f) graph -> 'a Sette.t
+  val max : ('a, 'b) compare -> ('a, 'c, 'd, 'e, 'f) graph -> 'a Sette.t
+end

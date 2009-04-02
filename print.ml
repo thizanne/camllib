@@ -147,9 +147,13 @@ let string_of_print
     res
   end
 
-let sprintf format =
-  let buffer = Buffer.create 128 in
+let sprintf ?margin format =
+  let buffer = Buffer.create 512 in
   let fmt = Format.formatter_of_buffer buffer in
+  begin match margin with
+  | Some n -> Format.pp_set_margin fmt n
+  | None -> ()
+  end;
   Format.kfprintf 
     (begin fun fmt -> 
       Format.pp_print_flush fmt ();
@@ -164,7 +168,7 @@ external is_printable: char -> bool = "caml_is_printable"
 external char_code: char -> int = "%identity"
 external char_chr: int -> char = "%identity"
 
-let escaped ?(linebreak:char='\n') s =
+let escaped ?(linebreak:char='n') s =
   let n = ref 0 in
   for i = 0 to String.length s - 1 do
     n := !n +

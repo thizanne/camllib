@@ -58,6 +58,8 @@ val rev : 'a t -> 'a t
   *)
 val mem : 'a -> 'a t -> bool
   (** Membership test. *)
+val exists : ('a -> bool) -> 'a t -> bool
+  (** Existence test *)
 val map : (bool -> 'a -> 'b) -> 'a t -> 'b t
   (** Ordinary map function. 
     The boolean value indicates whether the element is beginning 

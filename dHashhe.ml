@@ -20,8 +20,8 @@ let clear t =
 
 let create size = { xy = Hashhe.create size; yx = Hashhe.create size }
 let add t x y =
-  Hashhe.add t.xy x y;
-  Hashhe.add t.yx y x
+  Hashhe.replace t.xy x y;
+  Hashhe.replace t.yx y x
 
 let y_of_x t x = Hashhe.find t.xy x
 let x_of_y t y = Hashhe.find t.yx y
@@ -113,8 +113,8 @@ module Make(P : Param) = struct
 
   let create size = { xy = HashX.create size; yx = HashY.create size }
   let add t x y =
-    HashX.add t.xy x y;
-    HashY.add t.yx y x
+    HashX.replace t.xy x y;
+    HashY.replace t.yx y x
   let y_of_x t x = HashX.find t.xy x
   let x_of_y t y = HashY.find t.yx y
   let removex t x =
@@ -169,8 +169,8 @@ module Custom = struct
     yx = Hashhe.Custom.create hashy eqy size
   }
   let add t x y =
-    Hashhe.Custom.add t.xy x y;
-    Hashhe.Custom.add t.yx y x
+    Hashhe.Custom.replace t.xy x y;
+    Hashhe.Custom.replace t.yx y x
 
   let y_of_x t x = Hashhe.Custom.find t.xy x
   let x_of_y t y = Hashhe.Custom.find t.yx y
