@@ -774,6 +774,7 @@ let print
   ()
 
 let print_dot
+  ?(style:string="")
   ?(titlestyle:string="shape=ellipse,style=bold,style=filled,fontsize=20")
   ?(vertexstyle:string="shape=box,fontsize=12")
   ?(hedgestyle:string="shape=ellipse,fontsize=12")
@@ -781,7 +782,7 @@ let print_dot
   print_vertex print_hedge print_attrvertex print_attrhedge
   fmt g
   =
-  fprintf fmt "digraph G {@.  @[<v>";
+  fprintf fmt "digraph G {@.  @[<v>%s@ " style;
   if title<>"" then
     fprintf fmt "1073741823 [%s,label=\"%s\"];@ " titlestyle title;
   Hashhe.iter
@@ -987,6 +988,7 @@ module type S = sig
     Format.formatter -> ('a,'b,'c) t -> unit
 
   val print_dot :
+    ?style:string ->
     ?titlestyle:string ->
     ?vertexstyle:string ->
     ?hedgestyle:string ->
@@ -1691,6 +1693,7 @@ module Make(T : T) : (S with type vertex=T.vertex
     ()
 
   let print_dot
+    ?(style:string="")
     ?(titlestyle:string="shape=ellipse,style=bold,style=filled,fontsize=20")
     ?(vertexstyle:string="shape=box,fontsize=12")
     ?(hedgestyle:string="shape=ellipse,fontsize=12")
@@ -1698,7 +1701,7 @@ module Make(T : T) : (S with type vertex=T.vertex
     print_vertex print_hedge print_attrvertex print_attrhedge
     fmt g
     =
-    fprintf fmt "digraph G {@.  @[<v>";
+    fprintf fmt "digraph G {@.  @[<v>%s@ " style;
     if title<>"" then
       fprintf fmt "1073741823 [%s,label=\"%s\"];@ " titlestyle title;
     HashV.iter

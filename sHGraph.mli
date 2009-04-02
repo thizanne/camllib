@@ -298,6 +298,7 @@ val print :
     (['e]). *)
 
 val print_dot :
+  ?style:string ->
   ?titlestyle:string ->
   ?vertexstyle:string ->
   ?hedgestyle:string ->
@@ -337,7 +338,7 @@ val print_dot :
     The optional arguments allows to customize the style. The default setting
     corresponds to:
 
-    [print_dot ~titlestyle="shape=ellipse,style=bold,style=filled,fontsize=20"
+    [print_dot ~style="ranksep=0.1; size=\"7,10\";" ~titlestyle="shape=ellipse,style=bold,style=filled,fontsize=20"
 ~vertexstyle="shape=box,fontsize=12" ~hedgestyle="shape=ellipse,fontsize=12"
 ~title="" ...].  *)
 
@@ -519,6 +520,7 @@ module type S = sig
     Format.formatter -> ('a,'b,'c) t -> unit
 
   val print_dot :
+    ?style:string ->
     ?titlestyle:string ->
     ?vertexstyle:string ->
     ?hedgestyle:string ->
