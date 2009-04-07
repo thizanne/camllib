@@ -10,6 +10,8 @@ type ('a, 'b) t = {
   mutable hashtbl : ('a, 'b) Hashhe.t
 }
 
+let stdcompare = Hashhe.stdcompare
+
 let make compare hashtbl = { compare=compare; hashtbl=hashtbl }
 let create_compare compare n = make compare (Hashhe.create n)
 let create hash equal n = 

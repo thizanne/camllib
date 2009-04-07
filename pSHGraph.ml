@@ -16,6 +16,8 @@ type ('a, 'b, 'c, 'd, 'e) t = {
   mutable graph : ('a, 'b, 'c, 'd, 'e) SHGraph.t;
 }
 
+let stdcompare = SHGraph.stdcompare
+
 open SHGraph
 
 let make compare graph = { compare=compare; graph=graph }
