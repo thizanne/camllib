@@ -1,13 +1,3 @@
-(*
-        multiSetList.ml
-
-	Multi-ensembles avec des listes
-
- *
- *      $Id: multiSetList.ml,v 1.5 2005/06/14 14:26:47 bjeannet Exp $
- *
- *)
-
 (** Multisets implemented with lists *)
 
 type 'a t = ('a * int) list

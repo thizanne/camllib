@@ -1,5 +1,3 @@
-(* $Id: time.ml,v 1.1 2005/06/14 14:27:40 bjeannet Exp $ *)
-
 (** Small module to compute the duration of computations *)
 
 let wrap_duration (duration:float ref) (f:unit -> 'a) : 'a =

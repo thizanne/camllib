@@ -1,5 +1,3 @@
-(* $Id: time.mli,v 1.1 2005/06/14 14:27:41 bjeannet Exp $ *)
-
 (** Small module to compute the duration of computations *)
 
 val wrap_duration : float ref -> (unit -> 'a) -> 'a

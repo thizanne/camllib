@@ -1,5 +1,3 @@
-(* $Id: dHashhe.ml,v 1.1 2005/06/14 14:27:39 bjeannet Exp $ *)
-
 (** Two-way hashtable between two data types *)
 
 open Format
@@ -147,57 +145,3 @@ module Make(P : Param) = struct
 
 end
 
-module Custom = struct
-  type ('a,'b) t = {
-    xy : ('a,'b) Hashhe.Custom.t;
-    yx : ('b,'a) Hashhe.Custom.t
-  }
-  let hashx t = t.xy
-  let hashy t = t.yx
-
-  let clear t =
-    Hashhe.Custom.clear t.xy;
-    Hashhe.Custom.clear t.yx;
-    ()
-
-  let create_compare cmpx cmpy size = {
-    xy = Hashhe.Custom.create_compare cmpx size; 
-    yx = Hashhe.Custom.create_compare cmpy size
-  }
-  let create hashx eqx hashy eqy size = { 
-    xy = Hashhe.Custom.create hashx eqx size; 
-    yx = Hashhe.Custom.create hashy eqy size
-  }
-  let add t x y =
-    Hashhe.Custom.replace t.xy x y;
-    Hashhe.Custom.replace t.yx y x
-
-  let y_of_x t x = Hashhe.Custom.find t.xy x
-  let x_of_y t y = Hashhe.Custom.find t.yx y
-  let removex t x =
-    let y = y_of_x t x in
-    Hashhe.Custom.remove t.xy x;
-    Hashhe.Custom.remove t.yx y
-  let removey t y =
-    let x = x_of_y t y in
-    Hashhe.Custom.remove t.xy x;
-    Hashhe.Custom.remove t.yx y
-      
-  let memx t x = Hashhe.Custom.mem t.xy x
-  let memy t y = Hashhe.Custom.mem t.yx y
-  let iter t f = Hashhe.Custom.iter f t.xy
-  let fold t v f = Hashhe.Custom.fold f t.xy v
-  let cardinal t = Hashhe.Custom.fold (fun x y res -> res+1) t.xy 0
-  let print
-    ?(first : (unit, Format.formatter, unit) format = ("[@[<hv>" : (unit, Format.formatter, unit) format))
-    ?(sep : (unit, Format.formatter, unit) format = (";@ ":(unit, Format.formatter, unit) format))
-    ?(last : (unit, Format.formatter, unit) format = ("@]]":(unit, Format.formatter, unit) format))
-    ?(firstbind : (unit, Format.formatter, unit) format = ("" : (unit, Format.formatter, unit) format))
-    ?(sepbind : (unit, Format.formatter, unit) format = (" => ":(unit, Format.formatter, unit) format))
-    ?(lastbind : (unit, Format.formatter, unit) format = ("":(unit, Format.formatter, unit) format))
-    px py fmt t
-    =
-    Hashhe.Custom.print ~first ~sep ~last ~firstbind ~sepbind ~lastbind
-      px py
-      fmt t.xy
-end

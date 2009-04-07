@@ -1,5 +1,3 @@
-(* $Id: print.mli,v 1.1 2005/06/14 14:27:40 bjeannet Exp $ *)
-
 (** Printing functions using module [Format] *)
 
 (** {2 Printing functions for standard datatypes (lists,arrays,...)} *)

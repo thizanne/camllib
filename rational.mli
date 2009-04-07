@@ -1,5 +1,3 @@
-(* $Id: rational.mli,v 1.1 2005/06/14 14:27:40 bjeannet Exp $ *)
-
 (** Rational numbers *)
 
 val gcd : int -> int -> int

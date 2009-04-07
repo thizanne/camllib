@@ -7,11 +7,11 @@ include Makefile.config
 SRCDIR = $(shell pwd)
 PREFIX = $(CAMLLIB_PREFIX)
 
-FILES = print sette mappe hashhe \
+FILES = print sette pSette mappe pMappe hashhe pHashhe \
 	setteI setteS mappeI mappeS hashheI hashheIB hashheS \
-	dMappe dHashhe \
+	dMappe pDMappe dHashhe pDHashhe \
 	setList multiSetList \
-	ilist fGraph1 fGraph sHGraph symbol union \
+	ilist fGraph1 fGraph sHGraph pSHGraph symbol union \
 	statistic time rational parse
 
 SRC = $(FILES:%=%.mli) $(FILES:%=%.ml)

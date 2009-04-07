@@ -1,9 +1,3 @@
-(*
- *      $Id: union.mli,v 1.3 2003/11/12 17:26:01 bjeannet Exp $
- *
- *      Union-find Abstract Data Types
- *)
-
 (** Union-find Abstract Data Types *)
 
 type 'a t

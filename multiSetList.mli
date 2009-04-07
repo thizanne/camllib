@@ -1,9 +1,3 @@
-(*
-	multiSetList.mli
-
-	Multisets with lists
-*)
-
 (** Multisets implemented with lists *)
 
 type 'a t

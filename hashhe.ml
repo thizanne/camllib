@@ -11,11 +11,9 @@
 (*                                                                     *)
 (***********************************************************************)
 
-(* $Id: hashhe.ml,v 1.1 2005/06/14 14:27:40 bjeannet Exp $ *)
+(** Hash tables *)
 
-(* Modified by B. Jeannet: functions [map] and [print], module [Custom] *)
-
-(* Hash tables *)
+(* Modified by B. Jeannet: functions [map], [copy] and [print] *)
 
 external hash_param : int -> int -> 'a -> int = "caml_hash_univ_param" "noalloc"
 
@@ -282,39 +280,5 @@ module Make(H: HashedType): (S with type key = H.t and type 'a t = (H.t,'a) hash
     let find h key = Compare.find compare h key 
     let find_all h key = Compare.find_all compare h key 
     let mem h key = Compare.mem compare h key 
-end
-
-(** Custom interface *)
-
-module Custom = struct
-  type ('a,'b) t = {
-    compare : 'a compare;
-    mutable hashtbl : ('a,'b) hashtbl
-  }
-  let make compare hashtbl = { compare=compare; hashtbl=hashtbl }
-  let create_compare compare n = make compare (create n)
-  let create hash equal n = 
-    let compare = {
-      hash = (fun key -> (hash key) land max_int);
-      equal = equal
-    }
-    in
-    make compare (create n)
-      
-  let clear t = clear t.hashtbl
-  let copy t = make t.compare (copy t.hashtbl)
-  let map f t = make t.compare (map f t.hashtbl)
-  let iter f t = iter f t.hashtbl
-  let fold f t a = fold f t.hashtbl a
-  let length t = length t.hashtbl
-  let print ?first ?sep ?last ?firstbind ?sepbind ?lastbind pa pb fmt t = 
-    print ?first ?sep ?last ?firstbind ?sepbind ?lastbind pa pb fmt t.hashtbl
-
-  let add t key info = Compare.add t.compare t.hashtbl key info
-  let replace t key info = Compare.replace t.compare t.hashtbl key info
-  let remove t key = Compare.remove t.compare t.hashtbl key 
-  let find t key = Compare.find t.compare t.hashtbl key 
-  let find_all t key = Compare.find_all t.compare t.hashtbl key 
-  let mem t key = Compare.mem t.compare t.hashtbl key 
 end
 

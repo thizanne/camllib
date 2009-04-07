@@ -1,5 +1,3 @@
-(* $Id: statistic.mli,v 1.2 2003/11/12 20:39:03 bjeannet Exp $ *)
-
 (** Standard statistics functions *)
 
 val mean : float array -> float

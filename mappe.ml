@@ -1,5 +1,3 @@
-(* $Id: mappe.ml,v 1.10 2005/06/14 14:24:07 bjeannet Exp $ *)
-
 (** Association tables over ordered types *)
 
 type ('a,'b) map =
@@ -624,68 +622,4 @@ module Make(Setkey : Sette.S) = struct
   let mergei dmerge m1 m2 = Compare.mergei Setkey.Ord.compare dmerge m1 m2
   let combine dcombine m1 m2 = Compare.combine Setkey.Ord.compare dcombine m1 m2
   let print = print
-end
-
-module Custom = struct
-  type ('a,'b) t = {
-    compare : ('a -> 'a -> int);
-    map : ('a,'b) map
-  }
-  let make compare map = {compare=compare;map=map}
-
-  let is_empty (t:('a,'b) t) = t.map==Empty
-  let empty compare = make compare empty
-  let iter f t = iter f t.map
-  let map f t = make t.compare (map f t.map)
-  let mapi f t = make t.compare (mapi f t.map)
-  let fold f t acc = fold f t.map acc
-  let maptoset t = Sette.Custom.make t.compare (maptoset t.map)
-  let mapofset f t = make t.Sette.Custom.compare (mapofset f t.Sette.Custom.set)
-  let cardinal t = cardinal t.map
-  let min_key t = min_key t.map
-  let max_key t = max_key t.map
-  let choose t = choose t.map
-
-  let add x data t = make t.compare (Compare.add t.compare x data t.map)
-  let find x t = Compare.find t.compare x t.map
-  let mem x t = Compare.mem t.compare x t.map
-  let remove x t = make t.compare (Compare.remove t.compare x t.map)
-  let interset m1 s2 =
-    assert(m1.compare==s2.Sette.Custom.compare);
-    make m1.compare
-      (Compare.interset m1.compare m1.map s2.Sette.Custom.set)
-  let diffset m1 s2 =
-    assert(m1.compare==s2.Sette.Custom.compare);
-    make m1.compare
-      (Compare.diffset m1.compare m1.map s2.Sette.Custom.set)
-  let filter f m = make m.compare (Compare.filter m.compare f m.map)
-  let partition f m =
-    let (m1,m2) = Compare.partition m.compare f m.map in
-    (make m.compare m1, make m.compare m2)
-
-  let mapfm12b foo cmp m1 m2 =
-    assert(m1.compare==m2.compare);
-    foo m1.compare cmp m1.map m2.map
-  let compare cmp m1 m2 = mapfm12b Compare.compare cmp m1 m2
-  let comparei cmp m1 m2 = mapfm12b Compare.comparei cmp m1 m2
-  let equal cmp m1 m2 = mapfm12b Compare.equal cmp m1 m2
-  let equali cmp m1 m2 = mapfm12b Compare.equali cmp m1 m2
-  let subset cmp m1 m2 = mapfm12b Compare.subset cmp m1 m2
-  let subseti cmp m1 m2 = mapfm12b Compare.subseti cmp m1 m2
-
-  let mapfm12m foo f m1 m2 =
-    assert(m1.compare==m2.compare);
-    make m1.compare (foo m1.compare f m1.map m2.map)
-
-  let common f m1 m2 = mapfm12m Compare.common f m1 m2
-  let commoni f m1 m2 = mapfm12m Compare.commoni f m1 m2
-  let addmap m1 m2 = 
-    assert(m1.compare==m2.compare);
-    make m1.compare (Compare.addmap m1.compare m1.map m2.map)
-  let merge f m1 m2 = mapfm12m Compare.merge f m1 m2
-  let mergei f m1 m2 = mapfm12m Compare.mergei f m1 m2
-  let combine f m1 m2 = mapfm12m Compare.combine f m1 m2
-
-  let print ?first ?sep ?last ?firstbind ?sepbind ?lastbind px py fmt m =
-    print ?first ?sep ?last ?firstbind ?sepbind ?lastbind px py fmt m.map
 end

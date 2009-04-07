@@ -1,5 +1,3 @@
-(* $Id: print.ml,v 1.1 2005/06/14 14:27:40 bjeannet Exp $ *)
-
 (** Printing functions for standard datatypes *)
 
 open Format

@@ -1,9 +1,3 @@
-(*
- *      $Id: symbol.ml,v 1.5 2003/11/12 20:39:03 bjeannet Exp $
- *
- *      Symbol tables
- *)
-
 (** Symbol table, for string management *)
 
 open Format

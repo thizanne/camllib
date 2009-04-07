@@ -1,9 +1,3 @@
-(*
- *      $Id: symbol.mli,v 1.4 2003/11/12 20:39:03 bjeannet Exp $
- *
- *      Symbol tables
- *)
-
 (** Symbol table, for string management *)
 
 type t

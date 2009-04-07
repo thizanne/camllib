@@ -1,18 +1,15 @@
-(* $Id: dHashhe.mli,v 1.1 2005/06/14 14:27:39 bjeannet Exp $ *)
-
 (** Two-way hashtable between two data types *)
 
-type ('a, 'b) t =
-  {
-    xy : ('a,'b) Hashhe.t;
-    yx : ('b,'a) Hashhe.t
-  }
+type ('a, 'b) t = {
+  xy : ('a,'b) Hashhe.t;
+  yx : ('b,'a) Hashhe.t
+}
   (** The type of two-way hashtables, meant to be abstract *)
 
 val hashx : ('a,'b) t -> ('a,'b) Hashhe.t
 val hashy : ('a,'b) t -> ('b,'a) Hashhe.t
   (** Return the correspondance hashtable resp. from x to y and from y to x.
-    Never modify it !!! *)
+      Never modify it !!! *)
 val clear : ('a,'b) t -> unit
   (** Clear a table *)
 val create : int -> ('a, 'b) t
@@ -50,10 +47,10 @@ val print :
 
 
 (** Input signature of the functor {!DHashhe.Make}. *)
-module type Param = sig 
-  module HashX : Hashhe.S 
+module type Param = sig
+  module HashX : Hashhe.S
     (** Hashtable for objects in the first place of bindings *)
-  module HashY : Hashhe.S 
+  module HashY : Hashhe.S
     (** Hashtable for objects in the second place of bindings *)
 end
 
@@ -86,49 +83,11 @@ module type S = sig
     ?sepbind:(unit, Format.formatter, unit) format ->
     ?lastbind:(unit, Format.formatter, unit) format ->
     (Format.formatter -> x -> unit) ->
-    (Format.formatter -> y -> unit) -> 
+    (Format.formatter -> y -> unit) ->
     Format.formatter -> t -> unit
 end
 
 (** Functor building an implementation of the DHashtbl structure
    given two hashtables *)
-module Make(P : Param) : (S with module HashX = P.HashX 
+module Make(P : Param) : (S with module HashX = P.HashX
 			    and module HashY = P.HashY)
-
-module Custom :
-  sig
-    type ('a, 'b) t = {
-      xy : ('a, 'b) Hashhe.Custom.t;
-      yx : ('b, 'a) Hashhe.Custom.t;
-    }
-    val hashx : ('a, 'b) t -> ('a, 'b) Hashhe.Custom.t
-    val hashy : ('a, 'b) t -> ('b, 'a) Hashhe.Custom.t
-    val clear : ('a, 'b) t -> unit
-    val create_compare : 
-      'a Hashhe.compare -> 'b Hashhe.compare ->
-      int -> ('a, 'b) t
-    val create : 
-      ('a -> int) -> ('a -> 'a -> bool) ->
-      ('b -> int) -> ('b -> 'b -> bool) ->
-      int -> ('a, 'b) t
-    val add : ('a, 'b) t -> 'a -> 'b -> unit
-    val y_of_x : ('a, 'b) t -> 'a -> 'b
-    val x_of_y : ('a, 'b) t -> 'b -> 'a
-    val removex : ('a, 'b) t -> 'a -> unit
-    val removey : ('a, 'b) t -> 'b -> unit
-    val memx : ('a, 'b) t -> 'a -> bool
-    val memy : ('a, 'b) t -> 'b -> bool
-    val iter : ('a, 'b) t -> ('a -> 'b -> 'c) -> unit
-    val fold : ('a, 'b) t -> 'c -> ('a -> 'b -> 'c -> 'c) -> 'c
-    val cardinal : ('a, 'b) t -> int
-    val print :
-      ?first:(unit, Format.formatter, unit) format ->
-      ?sep:(unit, Format.formatter, unit) format ->
-      ?last:(unit, Format.formatter, unit) format ->
-      ?firstbind:(unit, Format.formatter, unit) format ->
-      ?sepbind:(unit, Format.formatter, unit) format ->
-      ?lastbind:(unit, Format.formatter, unit) format ->
-      (Format.formatter -> 'a -> unit) ->
-      (Format.formatter -> 'b -> unit) ->
-      Format.formatter -> ('a, 'b) t -> unit
-  end

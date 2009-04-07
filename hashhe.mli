@@ -11,13 +11,11 @@
 (*                                                                     *)
 (***********************************************************************)
 
-(* $Id: hashhe.mli,v 1.1 2005/06/14 14:27:40 bjeannet Exp $ *)
+(** Hash tables and hash functions. *)
 
-(** Hash tables and hash functions.
+(** Hash tables are hashed association tables, with in-place modification. 
 
-   Hash tables are hashed association tables, with in-place modification. 
-
-   Modified by B. Jeannet: functions [map] and [print].
+    Modified by B. Jeannet: functions [map], [copy] and [print].
 *)
 
 type ('a, 'b) hashtbl
@@ -188,40 +186,6 @@ module Make (H : HashedType) : S with type key = H.t
     interface, but use the hashing and equality functions
     specified in the functor argument [H] instead of generic
     equality and hashing. *)
-
-(** {6 Custom interface} *)
-
-module Custom :
-  sig
-    type ('a, 'b) t = {
-      compare : 'a compare;
-      mutable hashtbl : ('a, 'b) hashtbl;
-    }
-    val create : ('a -> int) -> ('a -> 'a -> bool) -> int -> ('a, 'b) t
-    val create_compare : 'a compare -> int -> ('a, 'b) t
-    val clear : ('a, 'b) t -> unit
-    val add : ('a, 'b) t -> 'a -> 'b -> unit
-    val remove : ('a, 'b) t -> 'a -> unit
-    val find : ('a, 'b) t -> 'a -> 'b
-    val find_all : ('a, 'b) t -> 'a -> 'b list
-    val replace : ('a, 'b) t -> 'a -> 'b -> unit
-    val mem : ('a, 'b) t -> 'a -> bool
-    val copy : ('a, 'b) t -> ('a, 'b) t
-    val iter : ('a -> 'b -> 'c) -> ('a, 'b) t -> unit
-    val fold : ('a -> 'b -> 'c -> 'c) -> ('a, 'b) t -> 'c -> 'c
-    val map : ('a -> 'b -> 'c) -> ('a, 'b) t -> ('a, 'c) t
-    val length : ('a, 'b) t -> int
-    val print :
-      ?first:(unit, Format.formatter, unit) format ->
-      ?sep:(unit, Format.formatter, unit) format ->
-      ?last:(unit, Format.formatter, unit) format ->
-      ?firstbind:(unit, Format.formatter, unit) format ->
-      ?sepbind:(unit, Format.formatter, unit) format ->
-      ?lastbind:(unit, Format.formatter, unit) format ->
-      (Format.formatter -> 'a -> unit) ->
-      (Format.formatter -> 'b -> unit) ->
-      Format.formatter -> ('a, 'b) t -> unit
-  end
 
 (** {6 The polymorphic hash primitive} *)
 

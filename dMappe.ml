@@ -1,5 +1,3 @@
-(* $Id: dMappe.ml,v 1.5 2003/11/12 20:39:01 bjeannet Exp $ *)
-
 (** Two-way map between two ordered data types *)
 
 (** The type of two-way maps *)
@@ -26,24 +24,24 @@ let remove x t = {
 let memx x t = Mappe.mem x t.xy
 let memy y t = Mappe.mem y t.yx
 let merge t1 t2 = {
-  xy = 
-  Mappe.merge 
+  xy =
+  Mappe.merge
     (fun y1 y2 -> if y1=y2 then y1 else failwith "DMappe.merge: incompatible (x,y) bindings")
     t1.xy t2.xy
   ;
-  yx = 
-  Mappe.merge 
+  yx =
+  Mappe.merge
     (fun x1 x2 -> if x1=x2 then x1 else failwith "DMappe.merge: incompatible (y,x) bindings")
     t1.yx t2.yx
   ;
 }
 let common t1 t2 = {
-  xy = 
-  Mappe.common 
+  xy =
+  Mappe.common
     (fun y1 y2 -> if y1=y2 then y1 else failwith "DMappe.common: incompatible (x,y) bindings")
     t1.xy t2.xy
   ;
-  yx = 
+  yx =
   Mappe.common
     (fun x1 x2 -> if x1=x2 then x1 else failwith "DMappe.common: incompatible (y,x) bindings")
     t1.yx t2.yx
@@ -75,8 +73,8 @@ let subsetx t1 t2 = t1==t2 || Mappe.subset (=) t1.xy t2.xy
 let subsety t1 t2 = t1==t2 || Mappe.subset (=) t1.yx t2.yx
 let cardinal t = Mappe.cardinal t.xy
 let print ?first ?sep ?last ?firstbind ?(sepbind=(" <=> ":(unit, Format.formatter, unit) format)) ?lastbind px py fmt t =
-  Mappe.print 
-    ?first ?sep ?last 
+  Mappe.print
+    ?first ?sep ?last
     ?firstbind ~sepbind ?lastbind
     px py fmt t.xy
 
@@ -101,7 +99,7 @@ module type S = sig
   val add : x -> y -> t -> t
   val y_of_x : x -> t -> y
   val x_of_y : y -> t -> x
-  val remove : x -> t -> t 
+  val remove : x -> t -> t
   val memx : x -> t -> bool
   val memy : y -> t -> bool
   val merge : t -> t -> t
@@ -127,7 +125,7 @@ module type S = sig
     ?sepbind:(unit, Format.formatter, unit) format ->
     ?lastbind:(unit, Format.formatter, unit) format ->
     (Format.formatter -> x -> unit) ->
-    (Format.formatter -> y -> unit) -> 
+    (Format.formatter -> y -> unit) ->
     Format.formatter -> t -> unit
 end
 
@@ -159,24 +157,24 @@ module Make(P : Param) = struct
   let memx x t = MappeX.mem x t.xy
   let memy y t = MappeY.mem y t.yx
   let merge t1 t2 = {
-    xy = 
-    MappeX.merge 
+    xy =
+    MappeX.merge
       (fun y1 y2 -> if (MappeY.Setkey.Ord.compare y1 y2)=0 then y1 else failwith "DMappe.merge: incompatible (x,y) bindings")
       t1.xy t2.xy
     ;
-    yx = 
-    MappeY.merge 
+    yx =
+    MappeY.merge
       (fun x1 x2 -> if (MappeX.Setkey.Ord.compare x1 x2)=0 then x1 else failwith "DMappe.merge: incompatible (y,x) bindings")
       t1.yx t2.yx
     ;
   }
   let common t1 t2 = {
-    xy = 
-    MappeX.common 
+    xy =
+    MappeX.common
       (fun y1 y2 -> if (MappeY.Setkey.Ord.compare y1 y2)=0 then y1 else failwith "DMappe.common: incompatible (x,y) bindings")
       t1.xy t2.xy
     ;
-    yx = 
+    yx =
     MappeY.common
       (fun x1 x2 -> if (MappeX.Setkey.Ord.compare x1 x2)=0 then x1 else failwith "DMappe.common: incompatible (y,x) bindings")
       t1.yx t2.yx
@@ -207,87 +205,6 @@ module Make(P : Param) = struct
   let subsetx t1 t2 = t1==t2 || MappeX.subset (fun y1 y2 -> (MappeY.Setkey.Ord.compare y1 y2 = 0)) t1.xy t2.xy
   let subsety t1 t2 = t1==t2 || MappeY.subset (fun x1 x2 -> (MappeX.Setkey.Ord.compare x1 x2 = 0)) t1.yx t2.yx
   let cardinal t = MappeX.cardinal t.xy
-  let print ?first ?sep ?last ?firstbind ?(sepbind = (" <=> ":(unit, Format.formatter, unit) format)) ?lastbind px py fmt t = 
+  let print ?first ?sep ?last ?firstbind ?(sepbind = (" <=> ":(unit, Format.formatter, unit) format)) ?lastbind px py fmt t =
     MappeX.print ?first ?sep ?last ?firstbind ~sepbind ?lastbind px py fmt t.xy
 end
-
-module Custom = struct
-  type ('a,'b) t = {
-    xy : ('a,'b) Mappe.Custom.t;
-    yx : ('b,'a) Mappe.Custom.t
-  }
-  let mapx t = t.xy
-  let mapy t = t.yx
-  let is_empty t = Mappe.Custom.is_empty t.xy
-  let empty cmpx cmpy = { xy = Mappe.Custom.empty cmpx; yx = Mappe.Custom.empty cmpy }
-  let add x y t = {
-    xy = Mappe.Custom.add x y t.xy;
-    yx = Mappe.Custom.add y x t.yx
-  }
-  let y_of_x x t = Mappe.Custom.find x t.xy
-  let x_of_y y t =  Mappe.Custom.find y t.yx
-  let remove x t = {
-    xy = Mappe.Custom.remove x t.xy;
-    yx = Mappe.Custom.remove (y_of_x x t) t.yx
-  }
-  let memx x t = Mappe.Custom.mem x t.xy
-  let memy y t = Mappe.Custom.mem y t.yx
-  let merge t1 t2 = {
-    xy = 
-    Mappe.Custom.merge 
-      (fun y1 y2 -> if y1=y2 then y1 else failwith "DMappe.Custom.merge: incompatible (x,y) bindings")
-      t1.xy t2.xy
-    ;
-    yx = 
-    Mappe.Custom.merge 
-      (fun x1 x2 -> if x1=x2 then x1 else failwith "DMappe.Custom.merge: incompatible (y,x) bindings")
-      t1.yx t2.yx
-    ;
-  }
-  let common t1 t2 = {
-    xy = 
-    Mappe.Custom.common 
-      (fun y1 y2 -> if y1=y2 then y1 else failwith "DMappe.Custom.common: incompatible (x,y) bindings")
-      t1.xy t2.xy
-    ;
-    yx = 
-    Mappe.Custom.common
-      (fun x1 x2 -> if x1=x2 then x1 else failwith "DMappe.Custom.common: incompatible (y,x) bindings")
-      t1.yx t2.yx
-    ;
-  }
-  let intersetx t setx = {
-    xy = Mappe.Custom.interset t.xy setx;
-    yx = Mappe.Custom.filter (fun y x -> Sette.Custom.mem x setx) t.yx
-  }
-  let intersety t sety = {
-    xy = Mappe.Custom.filter (fun x y -> Sette.Custom.mem y sety) t.xy;
-    yx = Mappe.Custom.interset t.yx sety;
-  }
-  let diffsetx t setx = {
-    xy = Mappe.Custom.diffset t.xy setx;
-    yx = Mappe.Custom.filter (fun y x -> not (Sette.Custom.mem x setx)) t.yx
-  }
-  let diffsety t sety = {
-    xy = Mappe.Custom.filter (fun x y -> not (Sette.Custom.mem y sety)) t.xy;
-    yx = Mappe.Custom.diffset t.yx sety;
-  }
-  let iter f t = Mappe.Custom.iter f t.xy
-  let fold f t v = Mappe.Custom.fold f t.xy v
-  let setx t = Mappe.Custom.maptoset t.xy
-  let sety t = Mappe.Custom.maptoset t.yx
-  let equalx t1 t2 = t1==t2 || Mappe.Custom.equal (=) t1.xy t2.xy
-  let equaly t1 t2 = t1==t2 || Mappe.Custom.equal (=) t1.yx t2.yx
-  let subsetx t1 t2 = t1==t2 || Mappe.Custom.subset (=) t1.xy t2.xy
-  let subsety t1 t2 = t1==t2 || Mappe.Custom.subset (=) t1.yx t2.yx
-  let cardinal t = Mappe.Custom.cardinal t.xy
-  let print ?first ?sep ?last ?firstbind ?(sepbind=(" <=> ":(unit, Format.formatter, unit) format)) ?lastbind px py fmt t =
-    Mappe.Custom.print 
-      ?first ?sep ?last 
-      ?firstbind ~sepbind ?lastbind
-      px py fmt t.xy
-  
-  
-  
-end
-  

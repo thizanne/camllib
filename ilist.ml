@@ -1,5 +1,3 @@
-(* $Id$ *)
-
 (* Bertrand Jeannet. This file is released under LGPL license. *)
 
 (** Imbricated lists *)
