@@ -136,7 +136,7 @@ let string_of_print
   ('a -> string)
   =
   begin fun a ->
-    let buffer = Buffer.create 64 in
+    let buffer = Buffer.create 1024 in
     let formatter = Format.formatter_of_buffer buffer in
     print formatter a;
     pp_print_flush formatter ();
@@ -146,7 +146,7 @@ let string_of_print
   end
 
 let sprintf ?margin format =
-  let buffer = Buffer.create 512 in
+  let buffer = Buffer.create 1024 in
   let fmt = Format.formatter_of_buffer buffer in
   begin match margin with
   | Some n -> Format.pp_set_margin fmt n
