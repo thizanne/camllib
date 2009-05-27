@@ -1,6 +1,10 @@
 (** Oriented hypergraphs, parametrized polymorphic version. *)
 
-(** Same interface as {!SHGraph}. *)
+(** Same interface as {!SHGraph}, but each graph stores its comparison
+    functions.
+
+    See the comment about comparison functions in the module
+    {!PSette}. *)
 
 type 'a priority = 'a SHGraph.priority =
   | Filter of ('a -> bool)

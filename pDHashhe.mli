@@ -1,6 +1,7 @@
 (** Two-way hashtable between two data types, parametrized polymorpphic version *)
 
-(** Same interface as {!DHashhe}. *)
+(** Same interface as {!DHashhe}, but each hash table stores its
+    comparison functions. *)
 
 type ('a, 'b) t = {
   xy : ('a, 'b) PHashhe.t;

@@ -83,9 +83,16 @@ let transpose copy_attrvertex copy_attrhedge copy_info t = make t.compare (trans
   
 let topological_sort ?priority t root =
   SHGraph.Compare.topological_sort t.compare ?priority t.graph root
-    
+
+let check_pset t root =
+    if t.compare.comparev==root.PSette.compare then true
+    else begin
+      Format.eprintf "@.PSHGraph: the comparison function for vertices in the graph (%i) is not physically the same as the comparison function for elements in the set (%i).@.See the documentation of the module PSette.@." (Obj.magic t.compare.comparev) (Obj.magic root.PSette.compare)
+      false
+    end
+
 let topological_sort_multi vertex_dummy hedge_dummy ?priority t root =
-  assert(t.compare.comparev==root.PSette.compare);
+  assert(check_pset t root);
   SHGraph.Compare.topological_sort_multi t.compare vertex_dummy hedge_dummy ?priority t.graph root.PSette.set
     
 let reachable ?filter t root =
@@ -96,7 +103,7 @@ let reachable ?filter t root =
   PSette.make t.compare.compareh seth)
     
 let reachable_multi vertex_dummy hedge_dummy ?filter t root =
-  assert(t.compare.comparev==root.PSette.compare);
+  assert(check_pset t root);
   let (setv,seth) =
     SHGraph.Compare.reachable_multi t.compare vertex_dummy hedge_dummy ?filter t.graph root.PSette.set
   in
@@ -107,14 +114,14 @@ let cfc ?priority t root =
   SHGraph.Compare.cfc t.compare ?priority t.graph root
     
 let cfc_multi vertex_dummy hedge_dummy ?priority t root =
-  assert(t.compare.comparev==root.PSette.compare);
+  assert(check_pset t root);
   SHGraph.Compare.cfc_multi t.compare vertex_dummy hedge_dummy ?priority t.graph root.PSette.set
     
 let scfc ?priority t root =
   SHGraph.Compare.scfc t.compare ?priority t.graph root
     
 let scfc_multi vertex_dummy hedge_dummy ?priority t root =
-  assert(t.compare.comparev==root.PSette.compare);
+  assert(check_pset t root);
   SHGraph.Compare.scfc_multi t.compare vertex_dummy hedge_dummy ?priority t.graph root.PSette.set
     
 let print pv ph pattrv pattrh pinfo fmt t =

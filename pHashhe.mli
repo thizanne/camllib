@@ -1,6 +1,7 @@
 (** Hash tables, parametrized polymorphic version *)
 
-(** Same interface as {!Hashhe}. *)
+(** Same interface as {!Hashhe}, but each hash table stores its comparison
+    functions. *)
 
 type 'a compare = 'a Hashhe.compare = {
   hash : 'a -> int;

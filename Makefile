@@ -25,6 +25,9 @@ LIB_TOINSTALLx = $(OBJSx) camllib.a camllib.cmxa
 
 all: $(LIB_TOINSTALL) $(OBJSx) camllib.cmxa
 
+byte: $(INT) $(OBJS) camllib.cma
+opt: $(INT) $(OBJSx) camllib.cmxa
+
 camllib.cma: $(OBJS)
 	$(OCAMLC) $(OCAMLFLAGS) -a $^ -o $@
 
@@ -58,6 +61,7 @@ tar: $(SRC) Makefile Makefile.config.model camllib.tex camllib.pdf README
 
 # TEX rules
 .PHONY: camllib.dvi camllib.pdf html depend
+.PRECIOUS: $(INT) $(OBJS) $(OBJSx)
 
 camllib.pdf: camllib.dvi
 	$(DVIPDF) camllib.dvi camllib.pdf

@@ -717,12 +717,14 @@ end
 (* Polymorphic interface *)
 (* *********************************************************************** *)
 
-let stdcompare = {
-  hashv = Hashhe.stdcompare;
-  hashh = Hashhe.stdcompare;
-  comparev = Pervasives.compare;
-  compareh = Pervasives.compare
-}
+let stdcompare = 
+  let cmp x y = Pervasives.compare x y in
+  {
+    hashv = Hashhe.stdcompare;
+    hashh = Hashhe.stdcompare;
+    comparev = cmp;
+    compareh = cmp
+  }
 
 let create size info = {
   vertex = Hashhe.create size;

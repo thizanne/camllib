@@ -1,6 +1,20 @@
 (** Association tables over ordered types, parametrized polymorphic version *)
 
-(** Same interface as {!Mappe}. *)
+(** Same interface as {!Mappe}, but each map stores its comparison
+    function.
+
+    If compiled without [-noassert] option, checks for binary
+    operations that the two arguments refers to the same
+    comparison function (by testing physical equality).
+
+    BE CAUTIOUS: do not use [Pervasives.compare] function
+    directly, as it is an external function, so that writing
+    [t1.cmp <- Pervasives.compare] induces the creation of a
+    closure, and if later [t2.cmp <- Pervasives.compare] is
+    executed, [t1.cmp != t2.cmp] because two different closures
+    have been created. Instead, first define [let compare = fun x
+    y -> Pervasives.compare x y in ...].
+*)
 
 type ('a,'b) t = {
   compare : ('a -> 'a -> int);
