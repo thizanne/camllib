@@ -87,7 +87,7 @@ let topological_sort ?priority t root =
 let check_pset t root =
     if t.compare.comparev==root.PSette.compare then true
     else begin
-      Format.eprintf "@.PSHGraph: the comparison function for vertices in the graph (%i) is not physically the same as the comparison function for elements in the set (%i).@.See the documentation of the module PSette.@." (Obj.magic t.compare.comparev) (Obj.magic root.PSette.compare);
+      Format.eprintf "@.PSHGraph: the comparison function for sets of vertices in the graph (%i) is not physically the same as the comparison function for elements in the set (%i).@.See the documentation of the module PSette.@." (Obj.magic t.compare.comparev) (Obj.magic root.PSette.compare);
       false
     end
 
