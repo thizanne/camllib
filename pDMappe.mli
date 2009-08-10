@@ -11,6 +11,8 @@ val add : 'a -> 'b -> ('a, 'b) t -> ('a, 'b) t
 val y_of_x : 'a -> ('a, 'b) t -> 'b
 val x_of_y : 'a -> ('b, 'a) t -> 'b
 val remove : 'a -> ('a, 'b) t -> ('a, 'b) t
+val removex : 'a -> ('a, 'b) t -> ('a, 'b) t
+val removey : 'b -> ('a, 'b) t -> ('a, 'b) t
 val memx : 'a -> ('a, 'b) t -> bool
 val memy : 'a -> ('b, 'a) t -> bool
 val merge : ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t

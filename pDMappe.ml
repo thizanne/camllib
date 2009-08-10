@@ -14,10 +14,15 @@ let add x y t = {
 }
 let y_of_x x t = PMappe.find x t.xy
 let x_of_y y t =  PMappe.find y t.yx
-let remove x t = {
+let removex x t = {
   xy = PMappe.remove x t.xy;
   yx = PMappe.remove (y_of_x x t) t.yx
 }
+let removey y t = {
+  xy = PMappe.remove (x_of_y y t) t.xy;
+  yx = PMappe.remove y t.yx
+}
+let remove = removex
 let memx x t = PMappe.mem x t.xy
 let memy y t = PMappe.mem y t.yx
 let merge t1 t2 = {
