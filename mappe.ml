@@ -106,6 +106,14 @@ let rec mapi f = function
 let rec cardinal = function
     Empty -> 0
   | Node(l, v, d, r, _) -> cardinal l + 1 + cardinal r
+
+let rec bindings_aux accu = function
+  | Empty -> accu
+  | Node(l, v, d, r, _) -> bindings_aux ((v,d) :: bindings_aux accu r) l
+
+let bindings s =
+  bindings_aux [] s
+
 let choose = min_binding
 
 let print
@@ -562,6 +570,7 @@ module type S = sig
   val filter: (key -> 'a -> bool) -> 'a t -> 'a t
   val partition: (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
   val cardinal : 'a t -> int
+  val bindings : 'a t -> (key * 'a) list
   val min_key: 'a t -> key
   val max_key: 'a t -> key
   val choose : 'a t -> key * 'a
@@ -597,6 +606,7 @@ module Make(Setkey : Sette.S) = struct
   let maptoset x = Setkey.obj (maptoset (repr x))
   let mapofset f x = mapofset f (Setkey.repr x)
   let cardinal = cardinal
+  let bindings = bindings
   let min_key = min_key
   let max_key = max_key
   let choose = choose

@@ -113,9 +113,13 @@ val partition: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t * ('a,'b) t
 	  [p]. *)
 val cardinal: ('a,'b) t -> int
 	(** Number of keys of a map *)
+val bindings : ('a,'b) t -> ('a * 'b) list
+    (** Return the list of all bindings of the given map. The
+	returned list is sorted in increasing order with respect to
+	the ordering [Pervasives.compare] on keys. *)
 val min_key: ('a,'b) t -> 'a
     (** Return the smallest key of the given map or
-      raise [Not_found] if the set is empty. *)
+	raise [Not_found] if the set is empty. *)
 val max_key: ('a,'b) t -> 'a
     (** Same as [min_elt], but returns the largest key of the given
        map. *)
@@ -171,6 +175,7 @@ module type S = sig
   val filter: (key -> 'a -> bool) -> 'a t -> 'a t
   val partition: (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
   val cardinal : 'a t -> int
+  val bindings : 'a t -> (key * 'a) list
   val min_key: 'a t -> key
   val max_key: 'a t -> key
   val choose : 'a t -> key * 'a

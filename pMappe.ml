@@ -15,6 +15,7 @@ let fold f t acc = Mappe.fold f t.map acc
 let maptoset t = PSette.make t.compare (Mappe.maptoset t.map)
 let mapofset f t = make t.PSette.compare (Mappe.mapofset f t.PSette.set)
 let cardinal t = Mappe.cardinal t.map
+let bindings t = Mappe.bindings t.map
 let min_key t = Mappe.min_key t.map
 let max_key t = Mappe.max_key t.map
 let choose t = Mappe.choose t.map

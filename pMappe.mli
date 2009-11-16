@@ -50,6 +50,7 @@ val subseti: ('a -> 'b -> 'c -> bool) -> ('a,'b) t -> ('a,'c) t -> bool
 val filter: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t
 val partition: ('a -> 'b -> bool) -> ('a,'b) t -> ('a,'b) t * ('a,'b) t
 val cardinal: ('a,'b) t -> int
+val bindings : ('a,'b) t -> ('a * 'b) list
 val min_key: ('a,'b) t -> 'a
 val max_key: ('a,'b) t -> 'a
 val choose : ('a,'b) t -> 'a * 'b
