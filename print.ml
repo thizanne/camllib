@@ -77,7 +77,7 @@ let hash
   ?(sepbind : (unit, Format.formatter, unit) format = (" => ":(unit, Format.formatter, unit) format))
   ?(lastbind : (unit, Format.formatter, unit) format = ("":(unit, Format.formatter, unit) format))
   (print_key:Format.formatter -> 'a -> unit)
-  (print_data:Format.formatter -> 'b -> unit) 
+  (print_data:Format.formatter -> 'b -> unit)
   (formatter:Format.formatter)
   (hash:('a,'b) Hashtbl.t)
   : unit
@@ -116,13 +116,13 @@ let weak
       let oelt = Weak.get array i in
       match oelt with
       | None -> ()
-      | Some e -> 
-          if !first then first := false else fprintf fmt sep;
+      | Some e ->
+	  if !first then first := false else fprintf fmt sep;
 	  fprintf fmt "%i => %a" i print_elt e
     done;
     fprintf fmt last;
   end
-    
+
 let print_of_string
   (string_of_a:'a -> string)
   :
@@ -130,7 +130,7 @@ let print_of_string
   =
   begin fun fmt a -> pp_print_string fmt (string_of_a a) end
 
-let string_of_print 
+let string_of_print
   (print:Format.formatter -> 'a -> unit)
   :
   ('a -> string)
@@ -152,8 +152,8 @@ let sprintf ?margin format =
   | Some n -> Format.pp_set_margin fmt n
   | None -> ()
   end;
-  Format.kfprintf 
-    (begin fun fmt -> 
+  Format.kfprintf
+    (begin fun fmt ->
       Format.pp_print_flush fmt ();
       let s = Buffer.contents buffer in
       Buffer.clear buffer;
@@ -204,5 +204,3 @@ let escaped ?(linebreak:char='n') s =
     done;
     s'
   end
-
-
