@@ -38,7 +38,6 @@ let partition f m =
   (make m.compare m1, make m.compare m2)
     
 let mapfm12b foo cmp m1 m2 =
-  assert(m1.compare==m2.compare);
   foo m1.compare cmp m1.map m2.map
 let compare cmp m1 m2 = mapfm12b Mappe.Compare.compare cmp m1 m2
 let comparei cmp m1 m2 = mapfm12b Mappe.Compare.comparei cmp m1 m2

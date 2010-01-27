@@ -23,22 +23,16 @@ let add x t = make t.compare (Sette.Compare.add t.compare x t.set)
 let mem x t = Sette.Compare.mem t.compare x t.set
 let remove x t = make t.compare (Sette.Compare.remove t.compare x t.set)
 let union t1 t2 = 
-  assert(t1.compare==t2.compare);
   make t1.compare (Sette.Compare.union t1.compare t1.set t2.set)
 let inter t1 t2 = 
-  assert(t1.compare==t2.compare);
   make t1.compare (Sette.Compare.inter t1.compare t1.set t2.set)
 let diff t1 t2 = 
-  assert(t1.compare==t2.compare);
   make t1.compare (Sette.Compare.diff t1.compare t1.set t2.set)
 let equal t1 t2 =
-  assert(t1.compare==t2.compare);
   Sette.Compare.equal t1.compare t1.set t2.set
 let compare t1 t2 = 
-  assert(t1.compare==t2.compare);
   Sette.Compare.compare t1.compare t1.set t2.set
 let subset t1 t2 =
-  assert(t1.compare==t2.compare);
   Sette.Compare.subset t1.compare t1.set t2.set
 let filter f t = 
   make t.compare (Sette.Compare.filter t.compare f t.set)
