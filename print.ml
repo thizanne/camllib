@@ -69,6 +69,20 @@ let pair
   print_elt2 fmt e2;
   fprintf fmt last
 
+let option
+    ?(first=("Some(@[":(unit,Format.formatter,unit) format))
+    ?(last = ("@])":(unit,Format.formatter,unit) format))
+    (print_elt:Format.formatter -> 'a -> unit)
+    (fmt:Format.formatter)
+    (oelt:'a option)
+    =
+  match oelt with
+  | None -> pp_print_string fmt "None"
+  | Some(elt) ->
+      fprintf fmt first;
+      print_elt fmt elt;
+      fprintf fmt last
+
 let hash
   ?(first : (unit, Format.formatter, unit) format = ("[@[<hv>" : (unit, Format.formatter, unit) format))
   ?(sep : (unit, Format.formatter, unit) format = (";@ ":(unit, Format.formatter, unit) format))
