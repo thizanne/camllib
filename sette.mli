@@ -11,7 +11,7 @@
 (*                                                                     *)
 (***********************************************************************)
 
-(** Sets over ordered types. *)
+(** Sets over ordered types (extension of standard library module and polymorphic variant) *)
 
 (** This module implements the set data structure, given a total ordering
     function over the set elements. All operations over sets are purely

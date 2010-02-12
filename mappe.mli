@@ -9,7 +9,7 @@
 (*                                                                     *)
 (***********************************************************************)
 
-(** Association tables over ordered types *)
+(** Association tables over ordered types (extension of standard library module and polymorphic variant) *)
 
 (** This module implements applicative association tables, also known as
    finite maps or dictionaries, given a total ordering function

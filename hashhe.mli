@@ -11,7 +11,7 @@
 (*                                                                     *)
 (***********************************************************************)
 
-(** Hash tables and hash functions. *)
+(** Hash tables and hash functions (extension of standard library module) *)
 
 (** Hash tables are hashed association tables, with in-place modification. 
 

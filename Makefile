@@ -82,12 +82,17 @@ camllibcode.dvi: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
 
 html: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
 	mkdir -p html
-	$(OCAMLDOC) -html -d html -colorize-code $(FILES:%=%.ml) $(FILES:%=%.mli)
+	$(OCAMLDOC) -html -d html -colorize-code -intro camllib.odoc $(FILES:%=%.ml) $(FILES:%=%.mli)
 
 dot: $(INT) $(FILES:%=%.mli)
 	$(OCAMLDOC) -dot $(FILES:%=%.mli)
 	dot -Tps ocamldoc.out >ocamldoc.ps
 
+homepage: html camllib.pdf
+	hyperlatex index
+	scp -r index.html html camllib.pdf \
+		johns:/home/wwwpop-art/people/bjeannet/bjeannet-forge/camllib
+	ssh johns chmod -R ugoa+rx /home/wwwpop-art/people/bjeannet/bjeannet-forge/camllib
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .mll .mly .dvi .tex .ps
 
 %.cmi: %.mli
