@@ -1,16 +1,10 @@
-(*
-        setList.mli
-
-        Sets with sorted lists.
-*)
-
 (** Sets over totally ordered type with lists. All operations over sets are
     purely applicative (no side-effects). *)
 
 type 'a t
-      (** The type of sets over elements of type 'a. *)
+      (** The type of sets over elements of type ['a]. *)
 
-val print : 
+val print :
   ?first:(unit, Format.formatter, unit) format ->
   ?sep:(unit, Format.formatter, unit) format ->
   ?last:(unit, Format.formatter, unit) format ->
@@ -31,7 +25,7 @@ val singleton : 'a -> 'a t
     (** [singleton x] returns the one-element set containing only [x]. *)
 val add : 'a -> 'a t -> 'a t
     (** [add x s] returns a set containing all elements of [s],
-           plus [x]. If [x] was already in [s], [s] is returned unchanged. *)
+	   plus [x]. If [x] was already in [s], [s] is returned unchanged. *)
 val remove : 'a -> 'a t -> 'a t
     (** [remove x s] returns a set containing all elements of [s], except
        [x]. If [x] was not in [s], [s] is returned unchanged. *)
@@ -39,7 +33,7 @@ val remove : 'a -> 'a t -> 'a t
 val union : 'a t -> 'a t -> 'a t
 val inter : 'a t -> 'a t -> 'a t
 val diff : 'a t -> 'a t -> 'a t
-        (** Union, intersection and set difference. *)
+	(** Union, intersection and set difference. *)
 
 val compare : 'a t -> 'a t -> int
     (** Total ordering between sets. Can be used as the ordering function
@@ -69,9 +63,9 @@ val fold : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
     *)
 val fold_right : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
 val fold_left : ('b -> 'a -> 'b) -> 'b -> 'a t -> 'b
-    (** Idem as [List.fold_X] functions *)    
+    (** Idem as [List.fold_X] functions *)
 val cardinal : 'a t -> int
-    (** Return the number of elements of a set. *)  
+    (** Return the number of elements of a set. *)
 val elements : 'a t -> 'a list
     (** Return the list of all elements of the given set.  The returned list
        is sorted in increasing order with respect to the ordering
@@ -108,7 +102,7 @@ module type S =
       (** The type of the set elements. *)
     type t
       (** The type of sets. *)
-    val print : 
+    val print :
       ?first:(unit, Format.formatter, unit) format ->
       ?sep:(unit, Format.formatter, unit) format ->
       ?last:(unit, Format.formatter, unit) format ->
@@ -128,14 +122,14 @@ module type S =
       (** [singleton x] returns the one-element set containing only [x]. *)
     val add : elt -> t -> t
       (** [add x s] returns a set containing all elements of [s],
-           plus [x]. If [x] was already in [s], [s] is returned unchanged. *)
+	   plus [x]. If [x] was already in [s], [s] is returned unchanged. *)
     val remove : elt -> t -> t
       (** [remove x s] returns a set containing all elements of [s], except
 	[x]. If [x] was not in [s], [s] is returned unchanged. *)
     val union : t -> t -> t
     val inter : t -> t -> t
     val diff : t -> t -> t
-        (** Union, intersection and set difference. *)
+	(** Union, intersection and set difference. *)
 
     val compare : t -> t -> int
       (** Total ordering between sets. Can be used as the ordering function
@@ -164,9 +158,9 @@ module type S =
       *)
     val fold_right : (elt -> 'a -> 'a) -> t -> 'a -> 'a
     val fold_left : ('a -> elt -> 'a) -> 'a -> t -> 'a
-      (** Idem as [List.fold_X] functions *)    
+      (** Idem as [List.fold_X] functions *)
     val cardinal : t -> int
-      (** Return the number of elements of a set. *)  
+      (** Return the number of elements of a set. *)
     val elements : t -> elt list
       (** Return the list of all elements of the given set.  The returned list
 	is sorted in increasing order. *)

@@ -67,14 +67,7 @@ camllib.pdf: camllib.dvi
 	$(DVIPDF) camllib.dvi camllib.pdf
 
 camllib.dvi: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
-	$(OCAMLDOC) -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -latex -o ocamldoc.tex $(FILES:%=%.mli) $(FILES:%=%.ml)
-	$(LATEX) camllib
-	$(MAKEINDEX) camllib
-	$(LATEX) camllib
-	$(LATEX) camllib
-
-camllibcode.dvi: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
-	$(OCAMLDOC) -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -inv-merge-ml-mli -keep-code -latex -o ocamldoc.tex $(FILES:%=%.mli)  $(FILES:%=%.ml)
+	$(OCAMLDOC) -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -latex -o ocamldoc.tex $(FILES:%=%.mli)
 	$(LATEX) camllib
 	$(MAKEINDEX) camllib
 	$(LATEX) camllib
@@ -82,7 +75,21 @@ camllibcode.dvi: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
 
 html: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
 	mkdir -p html
-	$(OCAMLDOC) -html -d html -colorize-code -intro camllib.odoc $(FILES:%=%.ml) $(FILES:%=%.mli)
+	$(OCAMLDOC) -html -d html -colorize-code -intro camllib.odoc $(FILES:%=%.mli)
+
+#t: $(FILES:%=%.mli) $(FILES:%=%.mli)
+#	ocamlpack2 -o t -title Camllib $(FILES)
+#
+#html: t.cmi t.mli
+#	mkdir -p html
+#	$(OCAMLDOC) -html -d html -colorize-code t.mli
+#
+#camllib.dvi: t.cmi t.mli
+#	$(OCAMLDOC) -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -latex -o ocamldoc.tex t.mli
+#	$(LATEX) camllib
+#	$(MAKEINDEX) camllib
+#	$(LATEX) camllib
+#	$(LATEX) camllib
 
 dot: $(INT) $(FILES:%=%.mli)
 	$(OCAMLDOC) -dot $(FILES:%=%.mli)

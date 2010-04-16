@@ -1,9 +1,3 @@
-(*
-        setList.ml
-
-        Ensembles implantes avec des listes triees
-*)
-
 (** Sets over totally ordered type with lists *)
 
 (* version generique *)
