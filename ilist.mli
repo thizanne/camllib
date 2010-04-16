@@ -5,14 +5,12 @@
 (** The operations of this module have a functional semantics. *)
 
 (** Type of list elements. *)
-type 'a el = 
+type 'a el =
 | Atome of 'a  (** Terminal case *)
-| List of 'a t (** The element is recursively a list. *) 
+| List of 'a t (** The element is recursively a list. *)
 
 (** Type of imbricated lists. *)
-and 'a t = 
-  | Nil                  (** Empty list *) 
-  | Cons of 'a el * 'a t (** Non-empty list *)
+and 'a t = 'a el list
 
 val cons : 'a el -> 'a t -> 'a t
   (** Adding a new list element at the begining of the list *)
@@ -38,12 +36,10 @@ val depth : 'a t -> int
 
 val append : 'a t -> 'a t -> 'a t
   (** Append two lists *)
-val concat : 'a t -> 'a list
-  (** Flatten the recursive list and converts it to a list *)
 
 val flatten : ?depth:int -> 'a t -> 'a t
   (** Flatten the recursive list, but only starting from the given
-    depth. Defaut depth is 1. 
+    depth. Defaut depth is 1.
     - [flatten [] = []]
     - [flatten [a;[b;[c];d];e;[f]] = [a;b;c;d;e;f]]
     - [flatten ~depth:2 [a;[b;[c];d];e;[f]] = [a;[b;c;d];e;[f]]]
@@ -51,7 +47,7 @@ val flatten : ?depth:int -> 'a t -> 'a t
   *)
 
 val rev : 'a t -> 'a t
-  (** Recursively reverse the recursive list 
+  (** Recursively reverse the recursive list
     - [rev [a;[b;[c];d];e;[f]] = [[f];e;[d;[c];b];a]]
   *)
 val mem : 'a -> 'a t -> bool
@@ -59,33 +55,19 @@ val mem : 'a -> 'a t -> bool
 val exists : ('a -> bool) -> 'a t -> bool
   (** Existence test *)
 val map : (bool -> 'a -> 'b) -> 'a t -> 'b t
-  (** Ordinary map function. 
-    The boolean value indicates whether the element is beginning 
+  (** Ordinary map function.
+    The boolean value indicates whether the element is beginning
     a recursive list. *)
 val iter : (bool -> 'a -> unit) -> 'a t -> unit
-  (** Ordinary iteration function. 
-    The boolean value indicates whether the element is beginning 
+  (** Ordinary iteration function.
+    The boolean value indicates whether the element is beginning
     a recursive list. *)
 val fold_left : ('a -> bool -> 'b -> 'a) -> 'a -> 'b t -> 'a
   (** Ordinary fold function, from left to right. *)
 val fold_right : (bool -> 'b -> 'a -> 'a) -> 'b t -> 'a -> 'a
   (** Ordinary fold function, from right to left. *)
-val iter_rec : ('a -> ('a Sette.t) array -> unit) -> 'a t -> unit
-  (** Recursive iteration function, rather complex. [iter_rec f ilist] applies
-    [f] to each atom of the recursive list, together with the array of
-    enclosing components. When [f] is called with [f obj array], [array] is
-    the array of enclosing components to which [obj] belongs, from the deepest
-    to the toplevel. Each component has been removed from the elements of the
-    components of the level below. 
 
-    Example: [iter_rec f [a;[b;c;d];e;[f]]]
-    is equivalent to [f a [|\{b,c,d,e,f\}|]; f b [|\{c,d\};\{a,e,f\}|]; 
-    f c [|\{b,d\};\{a,e,f\}|]; f d [|\{b,c\};\{a,e,f\}|]; f e [|\{a,b,c,d,f\}|]; 
-    f f [|\{\};\{a,b,c,d,e\}|]; ()]. 
-
-*)
-
-val print : 
+val print :
   ?first:(unit, Format.formatter, unit) format ->
   ?sep:(unit, Format.formatter, unit) format ->
   ?last:(unit, Format.formatter, unit) format ->

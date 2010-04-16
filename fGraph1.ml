@@ -254,14 +254,14 @@ let scfc_aux root nodes =
       pile      = Stack.create()
   in
   let rec composante sommet =
-    let partition = ref Nil in
+    let partition = ref [] in
     Sette.iter
       (function x ->
 	if !((Mappe.find x nodes).attrvertex) = min_int then begin
 	  ignore (visit x partition)
 	end)
       (Mappe.find sommet nodes).succ;
-    Cons(Atome sommet, !partition)
+    Atome(sommet)::(!partition)
 
   and visit sommet partition =
     Stack.push sommet pile;
@@ -289,14 +289,14 @@ let scfc_aux root nodes =
 	      (Mappe.find !element nodes).attrvertex := min_int;
 	      element := Stack.pop pile
 	    done;
-	    partition := Cons(List(composante sommet),!partition )
+	    partition := List(composante sommet)::(!partition)
 	  end
 	else
-	  partition := Cons(Atome(sommet),!partition)
+	  partition := Atome(sommet)::(!partition)
       end;
     !head
   in
-  let partition = ref Nil in
+  let partition = ref [] in
   let _ = visit root partition in
   !partition
 
@@ -308,7 +308,7 @@ let scfc_multi root g sroot =
   let nodes = squelette_multi root (fun () -> ref min_int) g sroot in
   let res = scfc_aux root nodes in
   match res with
-  | Cons(Atome(x),l) when x=root -> l
+  | Atome(x)::l when x=root -> l
   | _ -> failwith "graph.ml: scfc_multi"
 
 let min g =
@@ -692,14 +692,14 @@ struct
 	pile      = Stack.create()
     in
     let rec composante sommet =
-      let partition = ref Nil in
+      let partition = ref [] in
       SetV.iter
 	(function x ->
 	if !((MapV.find x nodes).attrvertex) = min_int then begin
 	  ignore (visit x partition)
 	end)
 	(MapV.find sommet nodes).succ;
-      Cons(Atome sommet, !partition)
+      Atome(sommet)::(!partition)
 
     and visit sommet partition =
       Stack.push sommet pile;
@@ -727,14 +727,14 @@ struct
 	      (MapV.find !element nodes).attrvertex := min_int;
 	      element := Stack.pop pile
 	    done;
-	    partition := Cons(List(composante sommet),!partition )
+	    partition := List(composante sommet)::(!partition)
 	  end
 	else
-	  partition := Cons(Atome(sommet),!partition)
+	  partition := Atome(sommet)::(!partition)
 	end;
       !head
     in
-    let partition = ref Nil in
+    let partition = ref [] in
     let _ = visit root partition in
     !partition
 
@@ -746,7 +746,7 @@ struct
     let nodes = squelette_multi root (fun () -> ref min_int) g sroot in
     let res = scfc_aux root nodes in
     match res with
-    | Cons(Atome(x),l) when (SetV.Ord.compare x root)=0 -> l
+    | Atome(x)::l when (SetV.Ord.compare x root)=0 -> l
     | _ -> failwith "graph.ml: scfc_multi"
 
   let min g =

@@ -5,111 +5,93 @@
 type 'a el =
     Atome of 'a
   | List of 'a t
-and 'a t =
-    Nil
-  | Cons of 'a el * 'a t
+and 'a t = 'a el list
 
-let cons x l = Cons(x,l)
+let cons x l = x::l
 and atome x = Atome(x)
 and list l = List(l)
 
-let hd = function
-    Cons(x,_) -> x
-  | _ -> raise (Failure "Ilist.hd")
+let hd = List.hd
+let tl = List.tl
+let length = List.length
 
-let tl = function
-    Cons(_,l) -> l
-  | _ -> raise (Failure "Ilist.tl")
-
-let rec length = function
-    Nil -> 0
-  | Cons(_,l) -> 1 + (length l)
-
-let depth ilist =
-  let rec depth_t = function
-    | Nil -> 0
-    | Cons(x,l) ->
-	let dx = depth_elt x 
-	and dl = depth_t l
-	in
-	max dx dl
-  and depth_elt = function
-    | Atome _ -> 0
-    | List l -> 1 + depth_t l
+let depth l =
+  let rec depth maxdepth = function
+    | [] -> maxdepth
+    | (Atome _)::l -> depth maxdepth l
+    | (List l2)::l ->
+	depth (max maxdepth (1+(depth 1 l2))) l
   in
-  if ilist=Nil then 0 else 1 + (depth_t ilist)
-    
-let rec append l1 l2 = match l1 with
-  Cons(x,l) -> Cons(x,append l l2)
-| Nil -> l2
+  depth 1 l
+
+let append l1 l2 = l1 @ l2
 
 let rec exists p = function
-  | Nil -> false
-  | Cons(Atome(a),reste) -> p a || exists p reste
-  | Cons(List(l),reste) -> exists p l || exists p reste
+  | [] -> false
+  | Atome(a)::l -> p a || exists p l
+  | List(l2)::l -> exists p l2 || exists p l
 
 let mem x l = exists (fun a -> x=a) l
 
-let map f ilist = 
+let map f ilist =
   let rec parcours flag = function
-      Nil -> Nil
-    | Cons(Atome(a),reste) -> 
-	let fa = f flag a in 
-	Cons(Atome(fa),parcours false reste)
-    | Cons(List(l),reste) -> 
-	let fl = parcours true l in 
-	Cons(List(fl),parcours false reste)
+    | [] -> []
+    | Atome(a)::l ->
+	Atome(f flag a)::(parcours false l)
+    | List(l2)::l ->
+	List(parcours true l2)::(parcours false l)
   in
   parcours false ilist
 
-let iter f ilist = 
+let iter f ilist =
   let rec parcours flag = function
-    Nil -> ()
-  | Cons(Atome(a),reste) -> f flag a; parcours false reste
-  | Cons(List(l),reste) -> parcours true l; parcours false reste
+    | [] -> ()
+    | Atome(a)::l ->
+	f flag a;
+	parcours false l
+    | List(l2)::l ->
+	parcours true l2;
+	parcours false l
   in
   parcours false ilist
-
+    
 let fold_left f res ilist =
   let rec parcours res flag = function
-      Nil -> res
-    | Cons(Atome(a),reste) -> 
-	let nres = f res flag a in 
-	parcours nres false reste
-    | Cons(List(l),reste) -> 
-	let nres = parcours res true l 
-	in parcours nres false reste
+    | [] -> res
+    | Atome(a)::l ->
+	let nres = f res flag a in
+	parcours nres false l
+    | List(l2)::l ->
+	let nres = parcours res true l2
+	in parcours nres false l
   in
   parcours res false ilist
 
 let fold_right f ilist res =
   let rec parcours res flag = function
-      Nil -> res
-    | Cons(Atome(a),reste) ->
-	let nres = parcours res false reste in
+    | [] -> res
+    | Atome(a)::l ->
+	let nres = parcours res false l in
 	f flag a nres
-    | Cons(List(l),reste) -> 
-	let nres = parcours res false reste in
-	parcours nres true l 
+    | List(l2)::l ->
+	let nres = parcours res false l in
+	parcours nres true l2
   in
   parcours res false ilist
 
-
 let rec rev_append l1 l2 =
   match l1 with
-  | Nil -> l2
-  | Cons(((Atome a) as atome),l) ->
-      rev_append l (Cons(atome,l2))
-  | Cons(List ilist,l) ->
-      rev_append l (Cons(List(rev_append ilist Nil), l2))
-      
-let rev ilist = rev_append ilist Nil
+  | [] -> l2
+  | (Atome(a) as x1)::l1 -> rev_append l1 (x1::l2)
+  | List(l)::l1 -> rev_append l1 (List(rev_append l [])::l2)
 
-let of_list list = 
+let rev l = rev_append l []
+
+let of_list list =
   let ilist =
-    List.fold_left 
-      (fun res a -> Cons((Atome a),res))
-      Nil list
+    List.fold_left
+      (fun res a -> Atome(a)::res)
+      [] list
   in
   rev ilist
 
@@ -120,77 +102,43 @@ let concat (ilist:'a t) : 'a list
       (fun (res:'a list) (flag:bool) (a:'a) -> a::res)
       [] ilist
   in
-  List.rev res
+  rev res
 
 let flatten ?(depth=1) (ilist:'a t) : 'a t
   =
   let rec rev_flatten res (cdepth:int) = function
-    | Nil -> res
-    | Cons(elt,rest) ->
-	let nres = begin match elt with
-	| Atome(a) ->
-	    Cons(elt,res)
-	| List(ilist) ->
+    | [] -> res
+    | x::l ->
+	let nres = begin match x with
+	| Atome(a) -> x::res
+	| List(l2) ->
 	    if cdepth < depth then
-	      Cons(
-		List(rev_flatten Nil (cdepth+1) ilist),
-		res
-	      )
+	      let l2 = rev_flatten [] (cdepth+1) l2 in
+	      List(l2)::res
 	    else
 	      fold_left
-		(fun res flag a -> Cons((Atome a),res))
-		res ilist
+		(fun res flag a -> Atome(a)::res)
+		res l2
 	end
 	in
-	rev_flatten nres cdepth rest
+	rev_flatten nres cdepth l
   in
-  let res = rev_flatten Nil 1 ilist in
+  let res = rev_flatten [] 1 ilist in
   rev res
-
-let iter_rec 
-  (f:'a -> 'a Sette.t array -> unit)
-  (ilist:'a t)
-  =
-  let set_of_ilist (ilist:'a t) : 'a Sette.t = 
-    fold_left 
-      (fun res flag x -> Sette.add x res) 
-      Sette.empty ilist
-  in
-  let rec parcours (tset:'a Sette.t array) (ilist:'a t) : unit
-    = 
-    match ilist with
-    | Nil -> ()
-    | Cons(Atome(a),rest) ->
-	let set = tset.(0) in
-	tset.(0) <- Sette.remove a set;
-	f a tset;
-	tset.(0) <- set;
-	parcours tset rest
-    | Cons(List(l),rest) ->
-	let set = tset.(0) in
-	let setl = set_of_ilist l in
-	tset.(0) <- Sette.diff set setl;
-	let ntset = Array.append [|setl|] tset in
-	parcours ntset l;
-	tset.(0) <- set;
-	parcours tset rest
-  in
-  let all = set_of_ilist ilist in
-  parcours [|all|] ilist
 
 let print
   ?(first : (unit, Format.formatter, unit) format = ("[@[" : (unit, Format.formatter, unit) format))
   ?(sep : (unit, Format.formatter, unit) format = (";@ ":(unit, Format.formatter, unit) format))
   ?(last : (unit, Format.formatter, unit) format = ("@]]":(unit, Format.formatter, unit) format))
-  func formatter liste 
+  func formatter liste
   =
-  let rec printl liste = 
+  let rec printl liste =
     Format.fprintf formatter first;
-    let rec do_sep = function 
-	Cons(e,Nil) -> printe e
-      | Cons(e,l) -> printe e ; Format.fprintf formatter sep; do_sep l
-      | Nil -> ()
-    in 
+    let rec do_sep = function
+      | [e] -> printe e
+      | e::l -> printe e ; Format.fprintf formatter sep; do_sep l
+      | [] -> ()
+    in
     do_sep liste; Format.fprintf formatter last
   and printe = function
       Atome(x) -> func formatter x

@@ -553,7 +553,7 @@ module Compare = struct
       end
     and composante sommet
       =
-      let partition = ref Ilist.Nil in
+      let partition = ref [] in
       let succhedges = succhedge cmp g sommet in
       begin match priority with
       | None ->
@@ -573,7 +573,7 @@ module Compare = struct
 	  let lhedges = List.sort (compare_priority p) lhedges in
 	  List.iter (composante_aux partition) lhedges
       end;
-      Ilist.Cons(Ilist.Atome sommet, !partition)
+      Ilist.Atome(sommet)::(!partition)
 
     and visit sommet partition
       =
@@ -612,10 +612,10 @@ module Compare = struct
 		Hashhe.Compare.replace cmp.hashv hash !element min_int;
 		element := Stack.pop pile
 	      done;
-	      partition := Ilist.Cons(Ilist.List(composante sommet),!partition )
+	      partition := Ilist.List(composante sommet)::(!partition)
 	    end
 	  else
-	    partition := Ilist.Cons(Ilist.Atome(sommet),!partition)
+	    partition := Ilist.Atome(sommet)::(!partition)
 	end;
       !head
 
@@ -642,7 +642,7 @@ module Compare = struct
       end
     in
 
-    let partition = ref Ilist.Nil in
+    let partition = ref [] in
     let _ = visit root partition in
     !partition
 
@@ -654,7 +654,7 @@ module Compare = struct
     in
     rem_dummy cmp vertex_dummy hedge_dummy g;
     begin match res with
-    | Ilist.Cons(Ilist.Atome(x),l) when (cmp.hashv.Hashhe.equal x vertex_dummy) -> l
+    | Ilist.Atome(x)::l when (cmp.hashv.Hashhe.equal x vertex_dummy) -> l
     | _ -> failwith "hGraph.ml: scfc_multi"
     end
 
