@@ -5,51 +5,69 @@ include Makefile.config
 #---------------------------------------
 
 SRCDIR = $(shell pwd)
-PREFIX = $(CAMLLIB_PREFIX)
+#
+# Installation directory
+#
+SITE-LIB = $(shell $(OCAMLFIND) printconf destdir)
+PKG-NAME = camllib
+SITE-LIB-PKG = $(SITE-LIB)/$(PKG-NAME)
 
-FILES = print sette pSette mappe pMappe hashhe pHashhe \
+#---------------------------------------
+# Files
+#---------------------------------------
+
+MLMODULES = \
+	print sette pSette mappe pMappe hashhe pHashhe \
 	setteI setteS mappeI mappeS hashheI hashheIB hashheS \
 	dMappe pDMappe dHashhe pDHashhe \
 	setList multiSetList \
 	ilist fGraph1 fGraph sHGraph pSHGraph symbol union \
 	statistic time rational parse
 
-SRC = $(FILES:%=%.mli) $(FILES:%=%.ml)
+FILES_TOINSTALL = META \
+	$(MLMODULES:%=%.ml) $(MLMODULES:%=%.mli) \
+	$(MLMODULES:%=%.cmi) camllib.cma \
+	$(MLMODULES:%=%.cmx) camllib.cmxa camllib.a \
+	$(MLMODULES:%=%.p.cmx) camllib.p.cmxa camllib.p.a
 
-INT = $(FILES:%=%.cmi)
-OBJS = $(FILES:%=%.cmo)
-OBJSx = $(FILES:%=%.cmx)
+all: $(FILES_TOINSTALL)
 
-LIB_TOINSTALL = $(INT) $(FILES:%=%.mli) camllib.cma
-LIB_TOINSTALLx = $(OBJSx) camllib.a camllib.cmxa
+byte: $(MLMODULES:%=%.cmi) camllib.cma
+opt: $(MLMODULES:%=%.cmx) camllib.cmxa
 
-all: $(LIB_TOINSTALL) $(OBJSx) camllib.cmxa
-
-byte: $(INT) $(OBJS) camllib.cma
-opt: $(INT) $(OBJSx) camllib.cmxa
-
-camllib.cma: $(OBJS)
+camllib.cma: $(MLMODULES:%=%.cmo)
 	$(OCAMLC) $(OCAMLFLAGS) -a $^ -o $@
 
-camllib.cmxa: $(OBJSx)
+camllib.cmxa: $(MLMODULES:%=%.cmx)
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -a $^ -o $@
 
-install:
-	$(INSTALLd) $(PREFIX)/lib
-	for i in $(LIB_TOINSTALL) $(LIB_TOINSTALLx); do \
-		if test -f $$i; then $(INSTALL) $$i $(PREFIX)/lib; fi; \
-	done
+camllib.p.cmxa: $(MLMODULES:%=%.p.cmx)
+	$(OCAMLOPT) -p $(OCAMLOPTFLAGS) -a $^ -o $@
 
-mostlyclean: clean
-	/bin/rm Makefile.depend
+META: Makefile
+	/bin/rm -f META
+	echo "\n\
+description = \"Utility Library (including various datatypes)\" \n\
+version = \"1.2.1\" \n\
+archive(byte) = \"camllib.cma\" \n\
+archive(native) = \"camllib.cmxa\" \n\
+archive(native,gprof) = \"camllib.p.cmxa\" \n\
+" >META
+
+install: $(FILES_TOINSTALL)
+	$(OCAMLFIND) remove $(PKG-NAME)
+	$(OCAMLFIND) install $(PKG-NAME) $^
+
+uninstall:
+	$(OCAMLFIND) remove $(PKG-NAME)
+
+distclean: clean
+	/bin/rm Makefile.depend TAGS
 
 clean:
 	/bin/rm -f *.cm[ioxa] *.o *.a *.cmxa *.annot *.html *.ps *.pdf *.dvi *.out
 	/bin/rm -f *.aux *.bbl *.blg *.dvi *.pdf *.log *.toc *.idx *.ilg *.ind ocamldoc*.tex ocamldoc.sty
 	/bin/rm -fr html
-
-distclean: clean
-	(cd $(PREFIX)/lib; rm -f $(LIB_TOINSTALL) $(LIB_TOINSTALLx))
 
 wc: $(SRC)
 	wc $^
@@ -61,39 +79,23 @@ tar: $(SRC) Makefile Makefile.config.model camllib.tex camllib.pdf README
 
 # TEX rules
 .PHONY: camllib.dvi camllib.pdf html depend
-.PRECIOUS: $(INT) $(OBJS) $(OBJSx)
 
 camllib.pdf: camllib.dvi
 	$(DVIPDF) camllib.dvi camllib.pdf
 
-camllib.dvi: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
-	$(OCAMLDOC) -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -latex -o ocamldoc.tex $(FILES:%=%.mli)
+camllib.dvi: $(MLMODULES:%=%.mli) $(MLMODULES:%=%.cmi)
+	$(OCAMLDOC) -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -latex -o ocamldoc.tex $(MLMODULES:%=%.mli)
 	$(LATEX) camllib
 	$(MAKEINDEX) camllib
 	$(LATEX) camllib
 	$(LATEX) camllib
 
-html: $(INT) $(FILES:%=%.mli) $(FILES:%=%.ml)
+html: $(MLMODULES:%=%.mli) $(MLMODULES:%=%.cmi)
 	mkdir -p html
-	$(OCAMLDOC) -html -d html -colorize-code -intro camllib.odoc $(FILES:%=%.mli)
+	$(OCAMLDOC) -html -d html -colorize-code -intro camllib.odoc $(MLMODULES:%=%.mli) 
 
-#t: $(FILES:%=%.mli) $(FILES:%=%.mli)
-#	ocamlpack2 -o t -title Camllib $(FILES)
-#
-#html: t.cmi t.mli
-#	mkdir -p html
-#	$(OCAMLDOC) -html -d html -colorize-code t.mli
-#
-#camllib.dvi: t.cmi t.mli
-#	$(OCAMLDOC) -latextitle 1,chapter -latextitle 2,section -latextitle 3,subsection -latextitle 4,subsubsection -latextitle 5,paragraph -noheader -notrailer -latex -o ocamldoc.tex t.mli
-#	$(LATEX) camllib
-#	$(MAKEINDEX) camllib
-#	$(LATEX) camllib
-#	$(LATEX) camllib
-
-dot: $(INT) $(FILES:%=%.mli)
-	$(OCAMLDOC) -dot $(FILES:%=%.mli)
-	dot -Tps ocamldoc.out >ocamldoc.ps
+dot: $(MLMODULES:%=%.mli)
+	$(OCAMLDOC) -dot -dot-reduce -o camllib.dot $^
 
 homepage: html camllib.pdf
 	hyperlatex index
@@ -108,6 +110,13 @@ homepage: html camllib.pdf
 	$(OCAMLC) $(OCAMLFLAGS) -c $(SRCDIR)/$<
 %.cmx: %.ml %.cmi
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $(SRCDIR)/$<
+%.p.cmx: %.ml %.cmi
+	$(OCAMLOPT) -p $(OCAMLOPTFLAGS) -c -o $@ $(SRCDIR)/$<
+
+.PHONY: tags TAGS
+tags: TAGS
+TAGS: $(MLMODULES:%=%.mli) $(MLMODULES:%=%.ml)
+	ocamltags $^
 
 depend: 
 	$(OCAMLDEP) $(SRC) > Makefile.depend

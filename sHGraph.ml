@@ -717,7 +717,7 @@ end
 (* Polymorphic interface *)
 (* *********************************************************************** *)
 
-let stdcompare = 
+let stdcompare =
   let cmp x y = Pervasives.compare x y in
   {
     hashv = Hashhe.stdcompare;

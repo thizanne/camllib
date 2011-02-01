@@ -54,7 +54,7 @@ let iter f ilist =
 	parcours false l
   in
   parcours false ilist
-    
+
 let fold_left f res ilist =
   let rec parcours res flag = function
     | [] -> res
