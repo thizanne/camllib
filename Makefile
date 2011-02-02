@@ -100,8 +100,9 @@ dot: $(MLMODULES:%=%.mli)
 homepage: html camllib.pdf
 	hyperlatex index
 	scp -r index.html html camllib.pdf \
-		johns:/home/wwwpop-art/people/bjeannet/bjeannet-forge/camllib
-	ssh johns chmod -R ugoa+rx /home/wwwpop-art/people/bjeannet/bjeannet-forge/camllib
+		avedon:/home/wwwpop-art/people/bjeannet/bjeannet-forge/camllib
+	ssh avedon chmod -R ugoa+rx /home/wwwpop-art/people/bjeannet/bjeannet-forge/camllib
+
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .mll .mly .dvi .tex .ps
 
 %.cmi: %.mli
