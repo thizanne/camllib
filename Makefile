@@ -62,7 +62,7 @@ uninstall:
 	$(OCAMLFIND) remove $(PKG-NAME)
 
 distclean: clean
-	/bin/rm Makefile.depend TAGS
+	/bin/rm -f Makefile.depend TAGS
 
 clean:
 	/bin/rm -f *.cm[ioxa] *.o *.a *.cmxa *.annot *.html *.ps *.pdf *.dvi *.out
