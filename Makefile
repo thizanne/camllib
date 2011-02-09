@@ -46,13 +46,11 @@ camllib.p.cmxa: $(MLMODULES:%=%.p.cmx)
 
 META: Makefile
 	/bin/rm -f META
-	echo "\n\
-description = \"Utility Library (including various datatypes)\" \n\
-version = \"1.2.1\" \n\
-archive(byte) = \"camllib.cma\" \n\
-archive(native) = \"camllib.cmxa\" \n\
-archive(native,gprof) = \"camllib.p.cmxa\" \n\
-" >META
+	echo "description = \"Utility Library (including various datatypes)\"" >META
+	echo "version = \"1.2.1\"" >>META
+	echo "archive(byte) = \"camllib.cma\"" >>META
+	echo "archive(native) = \"camllib.cmxa\"" >>META
+	echo "archive(native,gprof) = \"camllib.p.cmxa\"" >>META
 
 install: $(FILES_TOINSTALL)
 	$(OCAMLFIND) remove $(PKG-NAME)
