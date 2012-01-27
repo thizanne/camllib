@@ -117,10 +117,7 @@ tags: TAGS
 TAGS: $(MLMODULES:%=%.mli) $(MLMODULES:%=%.ml)
 	ocamltags $^
 
-depend: 
-	$(OCAMLDEP) $(SRC) > Makefile.depend
-
-Makefile.depend:
-	$(OCAMLDEP) $(SRC) > Makefile.depend
+Makefile.depend depend: 
+	$(OCAMLDEP) $(MLMODULES:%=%.ml) $(MLMODULES:%=%.mli) > Makefile.depend
 
 -include Makefile.depend

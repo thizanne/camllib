@@ -210,7 +210,7 @@ module Compare = struct
 
   let add_hedge cmp g h attrhedge ~pred ~succ =
     if is_hedge cmp g h then
-      failwith "SHGRaph.add_hedge: the hedge already exists (use replace_hedge)"
+      failwith "SHGraph.add_hedge: the hedge already exists (use replace_hedge)"
     ;
     begin try
       Array.iter
@@ -274,6 +274,7 @@ module Compare = struct
   (* ======================================================================= *)
 
   let add_dummy_forward cmp (vertex_dummy:'a) (hedge_dummy:'b) g (root:'a Sette.t) : unit =
+    assert (root<>Sette.empty);
     Hashhe.Compare.add cmp.hashv g.vertex vertex_dummy
       {
 	attrvertex=Obj.magic 0;
