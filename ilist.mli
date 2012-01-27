@@ -20,7 +20,13 @@ val list : 'a t -> 'a el
   (** Create a list element from a list. *)
 
 val of_list : 'a list -> 'a t
-  (** Create a recursive list from a list *)
+  (** Create a recursive list from a regular list *)
+val to_list : 'a t -> 'a list
+  (** Create a regular list from a recursive list.
+      Order is preserved but imbrication is lost
+      (as in {!flatten}).
+      - [to_list [[a;b];c;[d;e]] = [a;b;c;d;e]]
+  *)
 
 val hd : 'a t -> 'a el
   (** Return the head of the list. *)

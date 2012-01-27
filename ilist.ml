@@ -62,8 +62,8 @@ let fold_left f res ilist =
 	let nres = f res flag a in
 	parcours nres false l
     | List(l2)::l ->
-	let nres = parcours res true l2
-	in parcours nres false l
+	let nres = parcours res true l2 in
+	parcours nres false l
   in
   parcours res false ilist
 
@@ -94,6 +94,14 @@ let of_list list =
       [] list
   in
   rev ilist
+
+let to_list ilist =
+  let list =
+    fold_left
+      (fun res flag elt -> elt::res)
+      [] ilist
+  in
+  List.rev list
 
 let concat (ilist:'a t) : 'a list
   =
