@@ -2,154 +2,162 @@
 
 (** Imbricated lists *)
 
-type 'a el =
-    Atome of 'a
-  | List of 'a t
-and 'a t = 'a el list
+type ('a,'b) el =
+    Atome of 'b
+  | List of ('a,'b) t
+and ('a,'b) t = 'a * ('a,'b) el list
 
-let cons x l = x::l
-and atome x = Atome(x)
-and list l = List(l)
+let cons x l = let (b,ll) = l in (b,x::ll)
+let atome x = Atome(x)
+let list b l = List(b,l)
 
-let hd = List.hd
-let tl = List.tl
-let length = List.length
+let hd l = let (_,ll) = l in List.hd ll
+let tl l = let (b,ll) = l in (b,List.tl ll)
+let length l = let (_,ll) = l in List.length ll
 
-let depth l =
-  let rec depth maxdepth = function
+let depth (b,ll) =
+  let rec depth maxdepth ll = match ll with
     | [] -> maxdepth
-    | (Atome _)::l -> depth maxdepth l
-    | (List l2)::l ->
-	depth (max maxdepth (1+(depth 1 l2))) l
+    | (Atome _)::ll -> depth maxdepth ll
+    | (List(_,ll2))::ll ->
+	depth (max maxdepth (1+(depth 1 ll2))) ll
   in
-  depth 1 l
+  depth 1 ll
 
-let append l1 l2 = l1 @ l2
+let append ~combine (b1,ll1) (b2,ll2) =
+  (combine b1 b2, ll1 @ ll2)
 
-let rec exists p = function
+let rev_append
+    ~(combine:('b -> 'b -> 'b))
+    (b1,ll1) (b2,ll2)
+    =
+  let rec rev_append nb ll1 ll2 =
+    match ll1 with
+    | [] -> (nb,ll2)
+    | (Atome(a) as x1)::ll1 ->
+	rev_append nb ll1 (x1::ll2)
+    | List(b,ll)::ll1 ->
+	rev_append nb ll1 (List(rev_append b ll [])::ll2)
+  in
+  let nb = combine b1 b2 in
+  rev_append nb ll1 ll2
+
+let rev ((b,ll) as l) = rev_append ~combine:(fun _ _ -> b) l (b,[])
+
+let exists p ilist =
+  let rec exists b = function
   | [] -> false
-  | Atome(a)::l -> p a || exists p l
-  | List(l2)::l -> exists p l2 || exists p l
-
-let mem x l = exists (fun a -> x=a) l
-
-let map f ilist =
-  let rec parcours flag = function
-    | [] -> []
-    | Atome(a)::l ->
-	Atome(f flag a)::(parcours false l)
-    | List(l2)::l ->
-	List(parcours true l2)::(parcours false l)
+  | Atome(a)::ll -> p b a || exists b ll
+  | List(b2,ll2)::ll -> exists b2 ll2 || exists b ll
   in
-  parcours false ilist
+  let (b,ll) = ilist in
+  exists b ll
+
+let mem x l = exists (fun _ a -> x=a) l
+
+let map fb fa ilist =
+  let rec parcours flag b = function
+    | [] -> []
+    | Atome(a)::ll ->
+	Atome(fa flag b a)::(parcours false b ll)
+    | List(b2,ll2)::ll ->
+	let b3 = fb b2 in
+	let ll3 = parcours true b2 ll2 in
+	List(b3,ll3)::(parcours false b ll)
+  in
+  let (b,ll) = ilist in
+  (fb b, (parcours false b ll))
 
 let iter f ilist =
-  let rec parcours flag = function
+  let rec parcours flag b = function
     | [] -> ()
-    | Atome(a)::l ->
-	f flag a;
-	parcours false l
-    | List(l2)::l ->
-	parcours true l2;
-	parcours false l
+    | Atome(a)::ll ->
+	f flag b a;
+	parcours false b ll
+    | List(b2,ll2)::ll ->
+	parcours true b2 ll2;
+	parcours false b ll
   in
-  parcours false ilist
+  let (b,l) = ilist in
+  parcours false b l
 
 let fold_left f res ilist =
-  let rec parcours res flag = function
+  let rec parcours res flag b = function
     | [] -> res
-    | Atome(a)::l ->
-	let nres = f res flag a in
-	parcours nres false l
-    | List(l2)::l ->
-	let nres = parcours res true l2 in
-	parcours nres false l
+    | Atome(a)::ll ->
+	let nres = f res flag b a in
+	parcours nres false b ll
+    | List(b2,ll2)::ll ->
+	let nres = parcours res true b2 ll2 in
+	parcours nres false b ll
   in
-  parcours res false ilist
+  let (b,l) = ilist in
+  parcours res false b l
 
 let fold_right f ilist res =
-  let rec parcours res flag = function
+  let rec parcours res flag b = function
     | [] -> res
-    | Atome(a)::l ->
-	let nres = parcours res false l in
-	f flag a nres
-    | List(l2)::l ->
-	let nres = parcours res false l in
-	parcours nres true l2
+    | Atome(a)::ll ->
+	let nres = parcours res false b ll in
+	f flag b a nres
+    | List(b2,ll2)::ll ->
+	let nres = parcours res false b ll in
+	parcours nres true b2 ll2
   in
-  parcours res false ilist
+  let (b,l) = ilist in
+  parcours res false b l
 
-let rec rev_append l1 l2 =
-  match l1 with
-  | [] -> l2
-  | (Atome(a) as x1)::l1 -> rev_append l1 (x1::l2)
-  | List(l)::l1 -> rev_append l1 (List(rev_append l [])::l2)
-
-let rev l = rev_append l []
-
-let of_list list =
-  let ilist =
+let of_list b list =
+  let rilist =
     List.fold_left
       (fun res a -> Atome(a)::res)
       [] list
   in
-  rev ilist
+  (b, List.rev rilist)
 
 let to_list ilist =
   let list =
     fold_left
-      (fun res flag elt -> elt::res)
+      (fun res flag b elt -> elt::res)
       [] ilist
   in
   List.rev list
 
-let concat (ilist:'a t) : 'a list
+let flatten ?(depth=1) ilist
   =
-  let res =
-    fold_left
-      (fun (res:'a list) (flag:bool) (a:'a) -> a::res)
-      [] ilist
-  in
-  rev res
-
-let flatten ?(depth=1) (ilist:'a t) : 'a t
-  =
-  let rec rev_flatten res (cdepth:int) = function
+  let rec rev_flatten (res:('a,'b) el list) (cdepth:int) = function
     | [] -> res
     | x::l ->
 	let nres = begin match x with
-	| Atome(a) -> x::res
-	| List(l2) ->
+	| Atome(_) -> x::res
+	| List(b,ll) ->
 	    if cdepth < depth then
-	      let l2 = rev_flatten [] (cdepth+1) l2 in
-	      List(l2)::res
+	      let ll2 = rev_flatten [] (cdepth+1) ll in
+	      (List(b,ll2))::res
 	    else
 	      fold_left
-		(fun res flag a -> Atome(a)::res)
-		res l2
+		(fun res flag b a -> Atome(a)::res)
+		res (b,ll)
 	end
 	in
 	rev_flatten nres cdepth l
   in
-  let res = rev_flatten [] 1 ilist in
-  rev res
+  let (b,ll) = ilist in
+  let res = rev_flatten [] 1 ll in
+  rev (b,res)
 
 let print
-  ?(first : (unit, Format.formatter, unit) format = ("[@[" : (unit, Format.formatter, unit) format))
-  ?(sep : (unit, Format.formatter, unit) format = (";@ ":(unit, Format.formatter, unit) format))
-  ?(last : (unit, Format.formatter, unit) format = ("@]]":(unit, Format.formatter, unit) format))
-  func formatter liste
+  ?first ?sep ?last
+  ?(firstexp : (unit, Format.formatter, unit) format = ("^":(unit, Format.formatter, unit) format))
+  ?(lastexp : (unit, Format.formatter, unit) format = ("":(unit, Format.formatter, unit) format))
+  print_exp print_atom fmt ilist
   =
-  let rec printl liste =
-    Format.fprintf formatter first;
-    let rec do_sep = function
-      | [e] -> printe e
-      | e::l -> printe e ; Format.fprintf formatter sep; do_sep l
-      | [] -> ()
-    in
-    do_sep liste; Format.fprintf formatter last
-  and printe = function
-      Atome(x) -> func formatter x
-    | List(l) -> printl l
+  let rec print_elt fmt ll = match ll with
+    | Atome(a) -> print_atom fmt a
+    | List(b,ll) ->
+	Print.list ?first ?sep ?last print_elt fmt ll;
+	Format.fprintf fmt firstexp;
+	print_exp fmt b;
+	Format.fprintf fmt lastexp
   in
-  printl liste
+  print_elt fmt (List ilist)

@@ -295,16 +295,17 @@ val cfc_multi :
 
 val scfc :
   ?priority:'b priority ->
-  ('a,'b,'c,'d,'e) t -> 'a -> 'a Ilist.t
+  ('a,'b,'c,'d,'e) t -> 'a -> (unit,'a) Ilist.t
   (** Decomposition of the graph into Strongly Connected Sub-Components,
 
     [scfc graph vertex] returns a decomposition of the graph.  The exploration
     is done from the initial vertex [vertex], and only reachable vertices are
     included in the result. The result has the structure [[comp1 comp2 comp3
-    ...]] where each component is in turn decomposed into components.  *)
+    ...]] where each component is in turn decomposed into components.
+    The third parameter can be used to assign a value to each component (sub-list). *)
 val scfc_multi :
   'a -> 'b -> ?priority:'b priority ->
-  ('a,'b,'c,'d,'e) t -> 'a Sette.t -> 'a Ilist.t
+  ('a,'b,'c,'d,'e) t -> 'a Sette.t -> (unit,'a) Ilist.t
   (** idem, but from several initial vertices. *)
 
 (*  ====================================================================== *)
@@ -525,9 +526,9 @@ module type S = sig
     ?priority:hedge priority -> ('a,'b,'c) t -> SetV.t -> vertex list list
 
   val scfc :
-    ?priority:hedge priority -> ('a,'b,'c) t -> vertex -> vertex Ilist.t
+    ?priority:hedge priority -> ('a,'b,'c) t -> vertex -> (unit,vertex) Ilist.t
   val scfc_multi :
-    ?priority:hedge priority -> ('a,'b,'c) t -> SetV.t -> vertex Ilist.t
+    ?priority:hedge priority -> ('a,'b,'c) t -> SetV.t -> (unit,vertex) Ilist.t
 
   (** {3 Printing} *)
 
@@ -634,13 +635,13 @@ module Compare : sig
     'a -> 'b -> ('a, 'b, 'c, 'd, 'e) graph -> 'a Sette.t -> 'a list list
   val scfc :
     ('a, 'b) compare ->
-    ?priority:'b priority -> ('a, 'b, 'c, 'd, 'e) graph -> 'a -> 'a Ilist.t
+    ?priority:'b priority -> ('a, 'b, 'c, 'd, 'e) graph -> 'a -> (unit,'a) Ilist.t
   val scfc_multi :
     ('a, 'b) compare ->
     'a ->
     'b ->
     ?priority:'b priority ->
-    ('a, 'b, 'c, 'd, 'e) graph -> 'a Sette.t -> 'a Ilist.t
+    ('a, 'b, 'c, 'd, 'e) graph -> 'a Sette.t -> (unit,'a) Ilist.t
   val print :
     ('a, 'b) compare ->
     (Format.formatter -> 'a -> unit) ->

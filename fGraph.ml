@@ -398,7 +398,8 @@ let scfc_aux root nodes =
 	      (Mappe.find !element nodes).attrvertex := min_int;
 	      element := Stack.pop pile
 	    done;
-	    partition := List(composante sommet)::(!partition)
+	    let component = composante sommet in
+	    partition := List((),component)::(!partition)
 	  end
 	else
 	  partition := Atome(sommet)::(!partition)
@@ -411,13 +412,13 @@ let scfc_aux root nodes =
 
 let scfc g root =
   let nodes = squelette (fun () -> ref min_int) g in
-  scfc_aux root nodes
+  ((),scfc_aux root nodes)
 
 let scfc_multi root g sroot =
   let nodes = squelette_multi root (fun () -> ref min_int) g sroot in
   let res = scfc_aux root nodes in
   match res with
-  | Atome(x)::l when x=root -> l
+  | Atome(x)::l when x=root -> ((),l)
   | _ -> failwith "graph.ml: scfc_multi"
 
 let min g =
@@ -576,8 +577,8 @@ module type S = sig
   vertex -> ('b,'c,'d) t -> SetV.t -> SetV.t
   val cfc : ('b,'c,'d) t -> vertex -> vertex list list
   val cfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex list list
-  val scfc : ('b,'c,'d) t -> vertex -> vertex Ilist.t
-  val scfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex Ilist.t
+  val scfc : ('b,'c,'d) t -> vertex -> (unit,vertex) Ilist.t
+  val scfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> (unit,vertex) Ilist.t
   val min : ('b,'c,'d) t -> SetV.t
   val max : ('b,'c,'d) t -> SetV.t
   val print :
@@ -1003,7 +1004,8 @@ struct
 	      (MapV.find !element nodes).attrvertex := min_int;
 	      element := Stack.pop pile
 	    done;
-	    partition := List(composante sommet)::(!partition)
+	    let component = composante sommet in
+	    partition := List((),component)::(!partition)
 	  end
 	else
 	  partition := Atome(sommet)::(!partition)
@@ -1014,15 +1016,15 @@ struct
     let _ = visit root partition in
     !partition
 
-  let scfc g root =
+  let scfc g root=
     let nodes = squelette (fun () -> ref min_int) g in
-    scfc_aux root nodes
+    ((),scfc_aux root nodes)
 
   let scfc_multi root g sroot =
     let nodes = squelette_multi root (fun () -> ref min_int) g sroot in
     let res = scfc_aux root nodes in
     match res with
-    | Atome(x)::l when (SetV.Ord.compare x root)=0 -> l
+    | Atome(x)::l when (SetV.Ord.compare x root)=0 -> ((),l)
     | _ -> failwith "graph.ml: scfc_multi"
 
   let min g =

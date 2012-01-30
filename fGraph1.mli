@@ -7,7 +7,7 @@
 type ('a,'b,'c,'d) t
 
 val info : ('a,'b,'c,'d) t -> 'd
-val set_info : ('a,'b,'c,'d) t -> 'd -> ('a,'b,'c,'d) t 
+val set_info : ('a,'b,'c,'d) t -> 'd -> ('a,'b,'c,'d) t
 
 val succ : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
 val pred : ('a,'b,'c,'d) t -> 'a -> 'a Sette.t
@@ -25,7 +25,7 @@ val edges : ('a,'b,'c,'d) t -> ('a * 'a) Sette.t
 val map_vertex : ('a,'b,'c,'d) t -> ('a -> 'b -> 'e) -> ('a, 'e, 'c, 'd) t
 val map_edge : ('a,'b,'c,'d) t -> ('a * 'a -> 'c -> 'e) -> ('a, 'b, 'e, 'd) t
 val map_info : ('a,'b,'c,'d) t -> ('d -> 'e) -> ('a, 'b, 'c, 'e) t
-val map : 
+val map :
   ('a,'b,'c,'d) t ->
   ('a -> 'b -> 'bb) ->
   ('a * 'a -> 'c -> 'cc) ->
@@ -49,8 +49,8 @@ val reachable_multi :
   'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a Sette.t
 val cfc : ('a,'b,'c,'d) t -> 'a -> 'a list list
 val cfc_multi : 'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a list list
-val scfc : ('a,'b,'c,'d) t -> 'a -> 'a Ilist.t
-val scfc_multi : 'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> 'a Ilist.t
+val scfc : ('a,'b,'c,'d) t -> 'a -> (unit,'a) Ilist.t
+val scfc_multi : 'a -> ('a,'b,'c,'d) t -> 'a Sette.t -> (unit,'a) Ilist.t
 val min : ('a,'b,'c,'d) t -> 'a Sette.t
 val max : ('a,'b,'c,'d) t -> 'a Sette.t
 val print : (Format.formatter -> 'a -> unit) -> (Format.formatter -> 'b -> unit) -> (Format.formatter -> 'c -> unit) -> (Format.formatter -> 'd -> unit) -> Format.formatter -> ('a,'b,'c,'d) t -> unit
@@ -78,15 +78,15 @@ module type S = sig
     (** The Map for vertices *)
   module MapE : (Mappe.S with type key=vertex*vertex and module Setkey=SetE)
     (** The Map for edges *)
-	    
+
   type ('b,'c,'d) t
     (** The type of graphs, where:
       - ['b] is the type of vertex attribute (attrvertex);
       - ['c] is the type of edge attributes (attredge)
     *)
-    
+
   val info : ('b,'c,'d) t -> 'd
-  val set_info : ('b,'c,'d) t -> 'd -> ('b,'c,'d) t 
+  val set_info : ('b,'c,'d) t -> 'd -> ('b,'c,'d) t
   val succ : ('b,'c,'d) t -> vertex -> SetV.t
   val pred : ('b,'c,'d) t -> vertex -> SetV.t
   val attrvertex : ('b,'c,'d) t -> vertex -> 'b
@@ -102,7 +102,7 @@ module type S = sig
   val map_vertex : ('b,'c,'d) t -> (vertex -> 'b -> 'e) -> ('e, 'c,'d) t
   val map_edge : ('b,'c,'d) t -> (vertex * vertex -> 'c -> 'e) -> ('b, 'e, 'd) t
   val map_info : ('b,'c,'d) t -> ('d -> 'e) -> ('b, 'c, 'e) t
-  val map : 
+  val map :
     ('b,'c,'d) t ->
     (vertex -> 'b -> 'bb) ->
     (vertex * vertex -> 'c -> 'cc) ->
@@ -125,8 +125,8 @@ module type S = sig
   vertex -> ('b,'c,'d) t -> SetV.t -> SetV.t
   val cfc : ('b,'c,'d) t -> vertex -> vertex list list
   val cfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex list list
-  val scfc : ('b,'c,'d) t -> vertex -> vertex Ilist.t
-  val scfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> vertex Ilist.t
+  val scfc : ('b,'c,'d) t -> vertex -> (unit,vertex) Ilist.t
+  val scfc_multi : vertex -> ('b,'c,'d) t -> SetV.t -> (unit,vertex) Ilist.t
   val min : ('b,'c,'d) t -> SetV.t
   val max : ('b,'c,'d) t -> SetV.t
   val print : (Format.formatter -> vertex -> unit) -> (Format.formatter -> 'b -> unit) -> (Format.formatter -> 'c -> unit) -> (Format.formatter -> 'd -> unit) -> Format.formatter -> ('b,'c,'d) t -> unit

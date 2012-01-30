@@ -101,10 +101,10 @@ val cfc_multi :
   'a -> 'b -> ?priority:'b priority ->
   ('a, 'b, 'c, 'd, 'e) t -> 'a PSette.t -> 'a list list
 val scfc :
-  ?priority:'a priority -> ('b, 'a, 'c, 'd, 'e) t -> 'b -> 'b Ilist.t
+  ?priority:'a priority -> ('b, 'a, 'c, 'd, 'e) t -> 'b -> (unit,'b) Ilist.t
 val scfc_multi :
   'a -> 'b ->	?priority:'b priority ->
-  ('a, 'b, 'c, 'd, 'e) t -> 'a PSette.t -> 'a Ilist.t
+  ('a, 'b, 'c, 'd, 'e) t -> 'a PSette.t -> (unit,'a) Ilist.t
 val print :
   (Format.formatter -> 'a -> unit) ->
   (Format.formatter -> 'b -> unit) ->

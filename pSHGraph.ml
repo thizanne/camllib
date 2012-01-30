@@ -117,10 +117,10 @@ let cfc_multi vertex_dummy hedge_dummy ?priority t root =
   assert(check_pset t root);
   SHGraph.Compare.cfc_multi t.compare vertex_dummy hedge_dummy ?priority t.graph root.PSette.set
 
-let scfc ?priority t root =
+let scfc ?priority t root  =
   SHGraph.Compare.scfc t.compare ?priority t.graph root
 
-let scfc_multi vertex_dummy hedge_dummy ?priority t root =
+let scfc_multi vertex_dummy hedge_dummy ?priority t root  =
   assert(check_pset t root);
   SHGraph.Compare.scfc_multi t.compare vertex_dummy hedge_dummy ?priority t.graph root.PSette.set
 

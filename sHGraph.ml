@@ -613,7 +613,8 @@ module Compare = struct
 		Hashhe.Compare.replace cmp.hashv hash !element min_int;
 		element := Stack.pop pile
 	      done;
-	      partition := Ilist.List(composante sommet)::(!partition)
+	      let component = composante sommet in
+	      partition := Ilist.List((),component)::(!partition)
 	    end
 	  else
 	    partition := Ilist.Atome(sommet)::(!partition)
@@ -645,7 +646,7 @@ module Compare = struct
 
     let partition = ref [] in
     let _ = visit root partition in
-    !partition
+    ((),!partition)
 
   let scfc_multi cmp vertex_dummy hedge_dummy ?priority g root =
     add_dummy_forward cmp vertex_dummy hedge_dummy g root;
@@ -655,7 +656,7 @@ module Compare = struct
     in
     rem_dummy cmp vertex_dummy hedge_dummy g;
     begin match res with
-    | Ilist.Atome(x)::l when (cmp.hashv.Hashhe.equal x vertex_dummy) -> l
+    | (_,Ilist.Atome(x)::l) when (cmp.hashv.Hashhe.equal x vertex_dummy) -> ((),l)
     | _ -> failwith "hGraph.ml: scfc_multi"
     end
 
@@ -1060,9 +1061,9 @@ module type S = sig
     ?priority:hedge priority -> ('a,'b,'c) t -> SetV.t -> vertex list list
 
   val scfc :
-    ?priority:hedge priority -> ('a,'b,'c) t -> vertex -> vertex Ilist.t
+    ?priority:hedge priority -> ('a,'b,'c) t -> vertex -> (unit,vertex) Ilist.t
   val scfc_multi :
-    ?priority:hedge priority -> ('a,'b,'c) t -> SetV.t -> vertex Ilist.t
+    ?priority:hedge priority -> ('a,'b,'c) t -> SetV.t -> (unit,vertex) Ilist.t
 
   val print :
     (Format.formatter -> vertex -> unit) ->
@@ -1184,7 +1185,7 @@ module Make(T : T) : (S with type vertex=T.vertex
   let cfc_multi ?priority g root =
     Compare.cfc_multi stdcompare vertex_dummy hedge_dummy ?priority g (SetV.repr root)
 
-  let scfc ?priority g root =
+  let scfc ?priority g root  =
     Compare.scfc stdcompare ?priority g root
 
   let scfc_multi ?priority g root =
