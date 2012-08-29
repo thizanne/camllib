@@ -28,7 +28,7 @@ val mem: 'a -> 'a t -> bool
     (** [mem x s] tests whether [x] belongs to the set [s]. *)
 val add: 'a -> 'a t -> 'a t
     (** [add x s] returns a set containing all elements of [s],
-        plus [x]. If [x] was already in [s], [s] is returned unchanged. *)
+	plus [x]. If [x] was already in [s], [s] is returned unchanged. *)
 val singleton: ('a -> 'a -> int) -> 'a -> 'a t
     (** [singleton x] returns the one-element set containing only [x]. *)
 val remove: 'a -> 'a t -> 'a t
@@ -38,8 +38,8 @@ val remove: 'a -> 'a t -> 'a t
 val union: 'a t -> 'a t -> 'a t
 val inter: 'a t -> 'a t -> 'a t
 val diff: 'a t -> 'a t -> 'a t
-        (** Union, intersection and set difference. *)
-  
+	(** Union, intersection and set difference. *)
+
 val compare: 'a t -> 'a t -> int
     (** Total ordering between sets. Can be used as the ordering function
 	for doing sets of sets. *)
@@ -83,7 +83,7 @@ val elements: 'a t -> 'a list
     (** Return the list of all elements of the given set.  The returned list
 	is sorted in increasing order with respect to the ordering
 	[Pervasives.compare]. *)
-val min_elt: 'a t -> 'a 
+val min_elt: 'a t -> 'a
     (** Return the smallest element of the given set (with respect to the
 	[Ord.compare] ordering), or raise [Not_found] if the set is empty. *)
 val max_elt: 'a t -> 'a
@@ -102,4 +102,3 @@ val print :
 
 val make : ('a -> 'a -> int) -> 'a Sette.t -> 'a t
     (** Internal, do not use *)
-

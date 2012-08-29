@@ -23,7 +23,7 @@ let depth (b,ll) =
 	depth (max maxdepth (1+(depth 1 ll2))) ll
   in
   depth 1 ll
-
+    
 let append ~combine (b1,ll1) (b2,ll2) =
   (combine b1 b2, ll1 @ ll2)
 
@@ -59,7 +59,7 @@ let map fb fa ilist =
   let rec parcours flag b = function
     | [] -> []
     | Atome(a)::ll ->
-	Atome(fa flag b a)::(parcours false b ll)
+        Atome(fa flag b a)::(parcours false b ll)
     | List(b2,ll2)::ll ->
 	let b3 = fb b2 in
 	let ll3 = parcours true b2 ll2 in

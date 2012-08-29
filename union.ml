@@ -1,9 +1,9 @@
 (** Union-find Abstract Data Types *)
 
 type 'a t = ('a,'a) Hashtbl.t
-        (** The type of the sets of all elements *)
+	(** The type of the sets of all elements *)
 
-let create = Hashtbl.create
+let create n = Hashtbl.create n
 
 let add tbl elt = Hashtbl.add tbl elt elt
 
@@ -27,7 +27,7 @@ let find tbl element =
       (* The path compression function *)
       let rec compressrec res element =
 	let parent = Hashtbl.find tbl element in
-	if parent = element then 
+	if parent = element then
 	  ()
 	else begin
 	  Hashtbl.replace tbl element res;
@@ -44,17 +44,17 @@ let find tbl element =
 let union tbl element1 element2 =
   let root1 = find tbl element1 and
       root2 = find tbl element2
-  in 
+  in
   Hashtbl.replace tbl root1 root2;
   root2
 
 let extract tbl =
-  let size = 
+  let size =
     let size = ref 0 in
     Hashtbl.iter (fun elt _ -> incr size) tbl;
     !size
   in
-  let tbl2 = 
+  let tbl2 =
     let tbl2 = Hashtbl.create size in
     Hashtbl.iter (fun elt _ -> Hashtbl.add tbl2 elt []) tbl;
     tbl2

@@ -30,10 +30,15 @@ FILES_TOINSTALL = META \
 	$(MLMODULES:%=%.cmx) camllib.cmxa camllib.a \
 	$(MLMODULES:%=%.p.cmx) camllib.p.cmxa camllib.p.a
 
-all: $(FILES_TOINSTALL)
+ifneq ($(HAS_TYPEREX),)
+FILES_TOINSTALL += $(MLMODULES:%=%.cmt) $(MLMODULES:%=%.cmti)
+endif
+
+all: byte opt prof
 
 byte: $(MLMODULES:%=%.cmi) camllib.cma
 opt: $(MLMODULES:%=%.cmx) camllib.cmxa
+prof: $(MLMODULES:%=%.p.cmx) camllib.p.cmxa
 
 camllib.cma: $(MLMODULES:%=%.cmo)
 	$(OCAMLC) $(OCAMLFLAGS) -a $^ -o $@
@@ -63,7 +68,7 @@ distclean: clean
 	/bin/rm -f Makefile.depend TAGS
 
 clean:
-	/bin/rm -f *.cm[ioxa] *.o *.a *.cmxa *.annot *.html *.ps *.pdf *.dvi *.out
+	/bin/rm -f *.cm[ioxat] *.cmti *.o *.a *.cmxa *.annot *.html *.ps *.pdf *.dvi *.out
 	/bin/rm -f *.aux *.bbl *.blg *.dvi *.pdf *.log *.toc *.idx *.ilg *.ind ocamldoc*.tex ocamldoc.sty
 	/bin/rm -fr html
 
