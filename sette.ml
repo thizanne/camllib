@@ -181,7 +181,7 @@ module Compare = struct
     | (t, Empty) -> t
     | (_, _) -> join compare t1 (min_elt t2) (remove_min_elt t2)
 
-  (** Split<ting.  split x s returns a triple (l, present, r) where
+  (** Splitting.  split x s returns a triple (l, present, r) where
     - l is the set of elements of s that are < x
     - r is the set of elements of s that are > x
     - present is false if s contains no element equal to x,
@@ -402,4 +402,3 @@ module Make(Ord: Set.OrderedType) = struct
   let filter = Compare.filter Ord.compare
   let partition = Compare.partition Ord.compare
 end
-
