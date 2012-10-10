@@ -3,12 +3,11 @@
 {!indexlist}
 
 {2 Common data-structures}
-
 Variants of modules of the standard OCaml library
 {!modules: Sette Mappe Hashhe}
 
 Others
-{!modules: DMappe DHashhe SetList MultiSetList Ilist Union SHGraph }
+{!modules: DMappe DHashhe Ilist SHGraph Union SetList MultiSetList}
 
 Parametrized polymorphic versions
 {!modules: PSette PMappe PHashhe PDMappe PDHashhe PSHGraph}

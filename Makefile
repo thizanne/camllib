@@ -95,7 +95,7 @@ camllib.dvi: $(MLMODULES:%=%.mli) $(MLMODULES:%=%.cmi)
 
 html: $(MLMODULES:%=%.mli) $(MLMODULES:%=%.cmi)
 	mkdir -p html
-	$(OCAMLDOC) -html -d html -colorize-code -intro camllib.odoc $(MLMODULES:%=%.mli) 
+	$(OCAMLDOC) -html -d html -colorize-code -intro camllib.odoci $(MLMODULES:%=%.mli)
 
 dot: $(MLMODULES:%=%.mli)
 	$(OCAMLDOC) -dot -dot-reduce -o camllib.dot $^
@@ -122,7 +122,7 @@ tags: TAGS
 TAGS: $(MLMODULES:%=%.mli) $(MLMODULES:%=%.ml)
 	ocamltags $^
 
-Makefile.depend depend: 
+Makefile.depend depend:
 	$(OCAMLDEP) $(MLMODULES:%=%.ml) $(MLMODULES:%=%.mli) > Makefile.depend
 
 -include Makefile.depend
