@@ -30,10 +30,6 @@ FILES_TOINSTALL = META \
 	$(MLMODULES:%=%.cmx) camllib.cmxa camllib.a \
 	$(MLMODULES:%=%.p.cmx) camllib.p.cmxa camllib.p.a
 
-ifneq ($(HAS_TYPEREX),)
-FILES_TOINSTALL += $(MLMODULES:%=%.cmt) $(MLMODULES:%=%.cmti)
-endif
-
 all: byte opt prof
 
 byte: $(MLMODULES:%=%.cmi) camllib.cma
@@ -48,14 +44,6 @@ camllib.cmxa: $(MLMODULES:%=%.cmx)
 
 camllib.p.cmxa: $(MLMODULES:%=%.p.cmx)
 	$(OCAMLOPT) -p $(OCAMLOPTFLAGS) -a $^ -o $@
-
-META: Makefile
-	/bin/rm -f META
-	echo "description = \"Utility Library (including various datatypes)\"" >META
-	echo "version = \"1.2.1\"" >>META
-	echo "archive(byte) = \"camllib.cma\"" >>META
-	echo "archive(native) = \"camllib.cmxa\"" >>META
-	echo "archive(native,gprof) = \"camllib.p.cmxa\"" >>META
 
 install: $(FILES_TOINSTALL)
 	$(OCAMLFIND) remove $(PKG-NAME)

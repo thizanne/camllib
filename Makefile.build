@@ -20,7 +20,6 @@ MLMODULES = $(shell cat camllib.mllib)
 
 FILES_TOINSTALL = \
 	$(MLMODULES:%=%.ml) $(MLMODULES:%=%.mli) \
-	$(MLMODULES:%=%.cmt) $(MLMODULES:%=%.cmti) \
 	$(MLMODULES:%=%.cmi) camllib.cma \
 	$(MLMODULES:%=%.cmx) camllib.cmxa camllib.a \
 	$(MLMODULES:%=%.p.cmx) camllib.p.cmxa camllib.p.a
