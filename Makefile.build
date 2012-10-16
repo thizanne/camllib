@@ -47,7 +47,7 @@ uninstall:
 clean:
 	$(OCAMLBUILD) -clean
 distclean: clean
-	/bin/rm -f TAGS META Makefile.depend myocamlbuild
+	/bin/rm -f TAGS Makefile.depend myocamlbuild
 
 dot: $(MLMODULES:%=%.mli)
 	$(OCAMLDOC) -dot -dot-reduce -o camllib.dot $^

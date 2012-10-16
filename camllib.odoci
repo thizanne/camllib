@@ -6,8 +6,8 @@
 Variants of modules of the standard OCaml library
 {!modules: Sette Mappe Hashhe}
 
-Others
-{!modules: DMappe DHashhe Ilist SHGraph Union SetList MultiSetList}
+Data-structures
+{!modules: Union DMappe DHashhe Ilist SHGraph SetList MultiSetList}
 
 Parametrized polymorphic versions
 {!modules: PSette PMappe PHashhe PDMappe PDHashhe PSHGraph}
