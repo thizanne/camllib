@@ -298,19 +298,25 @@ module Compare = struct
     in
     diffset m1 s2
 
-  let filter (compare:'a -> 'a -> int) p m =
-    let rec filt accu = function
-      | Empty -> accu
-      | Node(l, v, d, r, _) ->
-	  filt (filt (if p v d then add compare v d accu else accu) l) r in
-    filt Empty m
+  let rec filter (compare:'a -> 'a -> int) p = function
+    | Empty -> Empty
+    | Node(l, v, d, r, _) ->
+	(* call [p] in the expected left-to-right order *)
+	let l' = filter compare p l in
+	let pvd = p v d in
+	let r' = filter compare p r in
+	if pvd then join compare l' v d r' else concat compare l' r'
 
-  let partition (compare:'a -> 'a -> int) p m =
-    let rec part (t, f as accu) = function
-      | Empty -> accu
-      | Node(l, v, d, r, _) ->
-	  part (part (if p v d then (add compare v d t, f) else (t, add compare v d f)) l) r in
-    part (Empty, Empty) m
+  let rec partition (compare:'a -> 'a -> int) p = function
+    | Empty -> (Empty, Empty)
+    | Node(l, v, d, r, _) ->
+	(* call [p] in the expected left-to-right order *)
+	let (lt, lf) = partition compare p l in
+	let pvd = p v d in
+	let (rt, rf) = partition compare p r in
+	if pvd
+	then (join compare lt v d rt, concat compare lf rf)
+	else (concat compare lt rt, join compare lf v d rf)
 
   type ('a,'b) enumeration = End | More of 'a * 'b * ('a,'b) t * ('a,'b) enumeration
 

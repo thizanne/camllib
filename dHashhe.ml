@@ -16,6 +16,11 @@ let clear t =
   Hashhe.clear t.yx;
   ()
 
+let reset t =
+  Hashhe.reset t.xy;
+  Hashhe.reset t.yx;
+  ()
+
 let create size = { xy = Hashhe.create size; yx = Hashhe.create size }
 let add t x y =
   Hashhe.replace t.xy x y;
@@ -68,6 +73,7 @@ module type S = sig
   val hashx : t -> y HashX.t
   val hashy : t -> x HashY.t
   val clear : t -> unit
+  val reset : t -> unit
   val create : int -> t
   val add : t -> x -> y -> unit
   val y_of_x : t -> x -> y
@@ -108,6 +114,10 @@ module Make(P : Param) = struct
     HashX.clear t.xy;
     HashY.clear t.yx;
     ()
+  let reset t =
+    HashX.reset t.xy;
+    HashY.reset t.yx;
+    ()
 
   let create size = { xy = HashX.create size; yx = HashY.create size }
   let add t x y =
@@ -144,4 +154,3 @@ module Make(P : Param) = struct
     fmt hash
 
 end
-

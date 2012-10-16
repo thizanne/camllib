@@ -38,8 +38,12 @@ val create : int -> ('a, 'b) t
    initial guess. *)
 
 val clear : ('a, 'b) t -> unit
-(** Empty a hash table. *)
+(** Empty a hash table. Use [reset] instead of [clear] to shrink the
+    size of the bucket table to its initial size. *)
 
+val reset : ('a, 'b) t -> unit
+(** Empty a hash table and shrink the size of the bucket table
+    to its initial size. *)
 
 val add : ('a, 'b) t -> 'a -> 'b -> unit
 (** [add tbl x y] adds a binding of [x] to [y] in table [tbl].
@@ -110,6 +114,27 @@ val length : ('a, 'b) t -> int
    Multiple bindings are counted multiply, so [length]
    gives the number of times [iter] calls it first argument. *)
 
+
+type statistics = Hashtbl.statistics = {
+  num_bindings: int;
+    (** Number of bindings present in the table.
+	Same value as returned by {!Hashtbl.length}. *)
+  num_buckets: int;
+    (** Number of buckets in the table. *)
+  max_bucket_length: int;
+    (** Maximal number of bindings per bucket. *)
+  bucket_histogram: int array
+    (** Histogram of bucket sizes.  This array [histo] has
+	length [max_bucket_length + 1].  The value of
+	[histo.(i)] is the number of buckets whose size is [i]. *)
+}
+
+val stats : ('a, 'b) t -> statistics
+(** [Hashtbl.stats tbl] returns statistics about the table [tbl]:
+   number of buckets, size of the biggest bucket, distribution of
+   buckets by size.
+   @since 4.00.0 *)
+
 val print :
     ?first:(unit, Format.formatter, unit) format ->
     ?sep:(unit, Format.formatter, unit) format ->
@@ -122,7 +147,6 @@ val print :
     Format.formatter -> ('a,'b) t -> unit
 
 (** {6 Functorial interface} *)
-
 
 module type HashedType =
   sig
@@ -153,6 +177,7 @@ module type S =
 
     val create : int -> 'a t
     val clear : 'a t -> unit
+    val reset : 'a t -> unit
     val copy : 'a t -> 'a t
     val add : 'a t -> key -> 'a -> unit
     val remove : 'a t -> key -> unit
@@ -164,6 +189,7 @@ module type S =
     val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
     val map : (key -> 'a -> 'b) -> 'a t -> 'b t
     val length : 'a t -> int
+    val stats : 'a t -> statistics
     val print :
 	 ?first:(unit, Format.formatter, unit) format ->
 	 ?sep:(unit, Format.formatter, unit) format ->
@@ -214,7 +240,6 @@ external hash_param : int -> int -> 'a -> int = "caml_hash_univ_param" "noalloc"
 val stdcompare : 'a compare
 
 module Compare : sig
-  val resize : 'a compare -> ('a, 'b) hashtbl -> unit
   val add : 'a compare -> ('a, 'b) hashtbl -> 'a -> 'b -> unit
   val remove : 'a compare -> ('a, 'b) hashtbl -> 'a -> unit
   val find : 'a compare -> ('a, 'b) hashtbl -> 'a -> 'b

@@ -11,7 +11,11 @@ val hashy : ('a,'b) t -> ('b,'a) Hashhe.t
   (** Return the correspondance hashtable resp. from x to y and from y to x.
       Never modify it !!! *)
 val clear : ('a,'b) t -> unit
-  (** Clear a table *)
+(** Empty a hash table. Use [reset] instead of [clear] to shrink the
+    size of the bucket table to its initial size. *)
+val reset : ('a,'b) t -> unit
+(** Empty a hash table and shrink the size of the bucket table
+    to its initial size. *)
 val create : int -> ('a, 'b) t
   (** Create a new table, with the specified initial size *)
 val add : ('a, 'b) t -> 'a -> 'b -> unit
@@ -64,6 +68,7 @@ module type S = sig
   val hashx : t -> y HashX.t
   val hashy : t -> x HashY.t
   val clear : t -> unit
+  val reset : t -> unit
   val create : int -> t
   val add : t -> x -> y -> unit
   val y_of_x : t -> x -> y

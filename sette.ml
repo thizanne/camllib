@@ -301,19 +301,26 @@ module Compare = struct
     in
     s1==s2 || (subset s1 s2)
 
-  let filter (compare:'a -> 'a -> int) p s =
-    let rec filt accu = function
-      | Empty -> accu
-      | Node(l, v, r, _) ->
-	  filt (filt (if p v then add compare v accu else accu) l) r in
-    filt Empty s
+  let rec filter (compare:'a -> 'a -> int) p = function
+    | Empty -> Empty
+    | Node(l, v, r, _) ->
+	(* call [p] in the expected left-to-right order *)
+	let l' = filter compare p l in
+	let pv = p v in
+	let r' = filter compare p r in
+	if pv then join compare l' v r' else concat compare l' r'
 
-  let partition (compare:'a -> 'a -> int) p s =
-    let rec part (t, f as accu) = function
-      | Empty -> accu
-      | Node(l, v, r, _) ->
-	  part (part (if p v then (add compare v t, f) else (t, add compare v f)) l) r in
-    part (Empty, Empty) s
+  let rec partition (compare:'a -> 'a -> int) p = function
+    | Empty -> (Empty, Empty)
+    | Node(l, v, r, _) ->
+	(* call [p] in the expected left-to-right order *)
+	let (lt, lf) = partition compare p l in
+	let pv = p v in
+	let (rt, rf) = partition compare p r in
+	if pv
+	then (join compare lt v rt, concat compare lf rf)
+	  else (concat compare lt rt, join compare lf v rf)
+
 end
 
 let add x set = Compare.add Pervasives.compare x set
