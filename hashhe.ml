@@ -15,7 +15,7 @@
 
 (* Modified by B. Jeannet: functions [map], [copy] and [print] *)
 
-external hash_param : int -> int -> 'a -> int = "caml_hash_univ_param" "noalloc"
+external hash_param : int -> int -> 'a -> int = "caml_hash_univ_param" [@@noalloc]
 
 let hash x = hash_param 10 100 x
 
