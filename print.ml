@@ -189,32 +189,32 @@ let escaped ?(linebreak:char='n') s =
     | c -> if is_printable c then 1 else 4)
   done;
   if !n = String.length s then s else begin
-    let s' = String.create !n in
+    let s' = Bytes.create !n in
     n := 0;
     for i = 0 to String.length s - 1 do
       begin
 	match String.unsafe_get s i with
 	('"' | '\\') as c ->
-	  String.unsafe_set s' !n '\\'; incr n; String.unsafe_set s' !n c
+	  Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n c
 	| '\n' ->
-	    String.unsafe_set s' !n '\\'; incr n; String.unsafe_set s' !n linebreak
+	    Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n linebreak
 	| '\t' ->
-	    String.unsafe_set s' !n '\\'; incr n; String.unsafe_set s' !n 't'
+	    Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 't'
 	| c ->
 	    if is_printable c then
-	      String.unsafe_set s' !n c
+	      Bytes.unsafe_set s' !n c
 	    else begin
 	      let a = char_code c in
-	      String.unsafe_set s' !n '\\';
+	      Bytes.unsafe_set s' !n '\\';
 	      incr n;
-	      String.unsafe_set s' !n (char_chr (48 + a / 100));
+	      Bytes.unsafe_set s' !n (char_chr (48 + a / 100));
 	      incr n;
-	      String.unsafe_set s' !n (char_chr (48 + (a / 10) mod 10));
+	      Bytes.unsafe_set s' !n (char_chr (48 + (a / 10) mod 10));
 	      incr n;
-	      String.unsafe_set s' !n (char_chr (48 + a mod 10))
+	      Bytes.unsafe_set s' !n (char_chr (48 + a mod 10))
 	    end
       end;
       incr n
     done;
-    s'
+    Bytes.to_string s'
   end
